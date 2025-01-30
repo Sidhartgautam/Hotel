@@ -291,6 +291,7 @@ class Price(models.Model):
         max_digits=5,
         decimal_places=2,
         default=0.00,
+        blank=True,
         help_text="Discount percentage applied to the base price."
     )
 

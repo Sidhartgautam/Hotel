@@ -19,37 +19,82 @@ class PropertyReviewCreateView(generics.CreateAPIView):
             data=serializer.data
         ).send(200)
 
-class HotelReviewListView(generics.ListAPIView):
-    queryset = PropertyReview.objects.all()
+class PropertyReviewListView(generics.ListAPIView):
     serializer_class = PropertyReviewSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Use `IsAuthenticated` if necessary
     pagination_class = CustomPageNumberPagination
+
+    def get_queryset(self):
+        property_slug = self.kwargs.get('property_slug')
+
+        # Filter by the property with the given slug
+        try:
+            from property.models import Property
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PropertyReview.objects.none()
+
+        return PropertyReview.objects.filter(property=property_instance)
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data).data
+            return PrepareResponse(
+                success=True,
+                message="Hotel review list retrieved successfully",
+                data=paginated_response
+            ).send(code=status.HTTP_200_OK)
+
         serializer = self.get_serializer(queryset, many=True)
-        response = PrepareResponse(
+        return PrepareResponse(
             success=True,
             message="Hotel review list retrieved successfully",
             data=serializer.data
-        )
-        return response.send()
+        ).send(code=status.HTTP_200_OK)
+
     
 
 class GuestReviewListView(generics.ListAPIView):
-    queryset = GuestReview.objects.all()
     serializer_class = GuestReviewSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Use `IsAuthenticated` if necessary
     pagination_class = CustomPageNumberPagination
+
+    def get_queryset(self):
+        property_slug = self.kwargs.get('property_slug')
+
+        # Filter by the property with the given slug
+        try:
+            from property.models import Property
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return GuestReview.objects.none()
+
+        return GuestReview.objects.filter(property=property_instance)
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data).data
+            return PrepareResponse(
+                success=True,
+                message="Guest review list retrieved successfully",
+                data=paginated_response
+            ).send(code=status.HTTP_200_OK)
+
         serializer = self.get_serializer(queryset, many=True)
-        response = PrepareResponse(
+        return PrepareResponse(
             success=True,
             message="Guest review list retrieved successfully",
             data=serializer.data
-        )
-        return response.send()
+        ).send(code=status.HTTP_200_OK)
+
     
 class GuestReviewCreateView(generics.CreateAPIView):
     queryset = GuestReview.objects.all()

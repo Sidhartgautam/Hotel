@@ -6,10 +6,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response 
 from rest_framework import status  
 from datetime import date  
-from .models import Property,PropertyCategory,CancellationPolicy,Policy 
+from .models import Property,PropertyCategory,CancellationPolicy,Policy,PropertyAmenities
 from .serializers import CancellationPolicySerializer,PolicySerializer
 
-from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer
+from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer
 from core.utils.response import PrepareResponse
 class PropertySearchView(APIView):
     def get(self, request):
@@ -199,4 +199,39 @@ class PolicyByPropertySlugView(generics.ListAPIView):
             message="Policies retrieved successfully for the specified property.",
             data=serializer.data
         ).send(status.HTTP_200_OK)
+    
+class PropertyAmenitiesListView(generics.ListAPIView):
+    serializer_class = PropertyAmenitiesSerializer
+
+    def get_queryset(self):
+        property_slug = self.kwargs.get('property_slug')
+
+        # Fetch the property by slug
+        try:
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PropertyAmenities.objects.none()
+
+        # Return amenities related to the property
+        return PropertyAmenities.objects.filter(property=property_instance)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data).data
+            return PrepareResponse(
+                success=True,
+                message="Property amenities retrieved successfully.",
+                data=paginated_response
+            ).send(code=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return PrepareResponse(
+            success=True,
+            message="Property amenities retrieved successfully.",
+            data=serializer.data
+        ).send(code=status.HTTP_200_OK)
         

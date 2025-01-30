@@ -6,8 +6,8 @@ from .views import (
 
 urlpatterns = [
     # Hotel FAQs
-    path('hotels/<uuid:hotel_id>/faqs/', PropertyFAQCreateView.as_view(), name='hotel-faq-list'),
-    path('hotels/<uuid:hotel_id>/faqs/create/', PropertyFAQListView.as_view(), name='hotel-faq-create'),
+    path('property/<uuid:property_id>/create/', PropertyFAQCreateView.as_view(), name='hotel-faq-list'),
+    path('property/<str:property_slug>/faqs/list/', PropertyFAQListView.as_view(), name='hotel-faq-create'),
 
     # Website FAQs
     path('website/faqs/', WebsiteFAQListView.as_view(), name='website-faq-list'),

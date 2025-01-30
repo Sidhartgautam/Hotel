@@ -7,7 +7,8 @@ from .views import (PropertySearchView,
                     PropertyByPropertyTypeView,
                     PropertyCancellationPolicyView,
                     PropertyDetailsView,
-                    PolicyByPropertySlugView
+                    PolicyByPropertySlugView,
+                    PropertyAmenitiesListView
 )
 
 urlpatterns = [
@@ -20,4 +21,5 @@ urlpatterns = [
     path('cancellation-policy/<uuid:property_id>/', PropertyCancellationPolicyView.as_view(), name='property-cancellation-policy'),
     path('properties/<str:slug>/details/',PropertyDetailsView.as_view(), name='property-details'),
     path('policies/<slug:slug>/', PolicyByPropertySlugView.as_view(), name='policy-by-property-slug'),
+    path('properties/<str:property_slug>/amenities/', PropertyAmenitiesListView.as_view(), name='property-amenities-list'),
 ]

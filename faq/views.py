@@ -1,4 +1,4 @@
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions,status
 from .models import PropertyFAQ, MoreLivingFAQ
 from .serializers import PropertyFAQSerializer, WebsiteFAQSerializer
 from property.models import Property
@@ -12,11 +12,11 @@ class PropertyFAQCreateView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        hotel_id = self.kwargs.get('hotel_id')
+        property_id = self.kwargs.get('property_id')
         try:
-            property = Property.objects.get(id=hotel_id)
+            property = Property.objects.get(id=property_id)
         except Property.DoesNotExist:
-            return PrepareResponse(success=False, message="Hotel not found").send(404)
+            return PrepareResponse(success=False, message="Property not found").send(404)
 
         parent_id = request.data.get('parent')
         if parent_id:
@@ -46,8 +46,36 @@ class PropertyFAQListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        property_id = self.kwargs.get('hotel_id')
-        return PropertyFAQ.objects.filter(property_id=property_id, parent__isnull=True).order_by('-created_at')
+        property_slug = self.kwargs.get('property_slug')
+        
+        # Ensure the property exists and fetch its FAQs
+        try:
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PropertyFAQ.objects.none()
+
+        return PropertyFAQ.objects.filter(property_id=property_instance.id, parent__isnull=True).order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data)
+            return PrepareResponse(
+                success=True,
+                message="Property FAQs retrieved successfully.",
+                data=paginated_response
+            ).send(code=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return PrepareResponse(
+            success=True,
+            message="Property FAQs retrieved successfully.",
+            data=serializer.data
+        ).send(code=status.HTTP_200_OK)
+        
 
 
 # Website FAQ Views
