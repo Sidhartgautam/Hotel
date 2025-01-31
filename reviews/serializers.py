@@ -4,11 +4,11 @@ from django.db import models
 from .models import GuestReview,PropertyReview
 
 class PropertyReviewSerializer(serializers.ModelSerializer):
-    review_count = serializers.SerializerMethodField()
+    user_name = serializers.CharField(source='user.username', read_only=True)
     class Meta:
         model = PropertyReview
-        fields = ['id', 'property', 'user', 'comment', 'rating', 'created_at']
-        read_only_fields = ['id', 'created_at', 'user','rating']
+        fields = ['id', 'property', 'user_name', 'comment', 'rating', 'created_at']
+        read_only_fields = ['id', 'created_at', 'user_name','rating']
 
     def validate_rating(self, value):
         if value >= 10:
@@ -25,12 +25,9 @@ class PropertyReviewSerializer(serializers.ModelSerializer):
         )['avg_rating']
         validated_data['rating'] = guest_review_average or 0
         return PropertyReview.objects.create(user=self.context['request'].user, **validated_data)
-    
-    def get_review_count(self, obj):
-        return GuestReview.objects.filter(hotel=obj.hotel).count()
 
 class GuestReviewSerializer(serializers.ModelSerializer):
-    average_rating = serializers.SerializerMethodField() 
+    average_rating = serializers.SerializerMethodField()
     category_averages = serializers.SerializerMethodField()
 
     class Meta:
@@ -48,10 +45,18 @@ class GuestReviewSerializer(serializers.ModelSerializer):
         return sum(values) / len(values)
 
     def get_category_averages(self, obj):
-        # Compute the averages of all reviews for this hotel, grouped by category
+    # Retrieve all existing reviews for the property, including the current one
         reviews = GuestReview.objects.filter(property=obj.property)
         category_fields = ['staff', 'facilities', 'cleanliness', 'comfort', 'value_for_money', 'location', 'free_wifi']
+
+        # If there are no other reviews, return the current review's values
+        if reviews.count() == 1:  # This means only the current review exists
+            return {field: getattr(obj, field) for field in category_fields}
+
+        # Otherwise, calculate the average across all reviews
         averages = {}
         for field in category_fields:
-            averages[field] = reviews.aggregate(avg=models.Avg(field))[f'{field}__avg'] or 0
+            avg_value = reviews.aggregate(avg=models.Avg(field)).get(f'{field}__avg')
+            averages[field] = avg_value if avg_value is not None else 0
+
         return averages

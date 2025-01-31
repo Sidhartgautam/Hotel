@@ -6,14 +6,14 @@ from core.utils.pagination import CustomPageNumberPagination
 
 class PropertyReviewCreateView(generics.CreateAPIView):
     queryset = GuestReview.objects.all()
-    serializer_class = GuestReviewSerializer
+    serializer_class = PropertyReviewSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        response = PrepareResponse(
+        return PrepareResponse(
             success=True,
             message="Review created successfully",
             data=serializer.data
@@ -21,13 +21,12 @@ class PropertyReviewCreateView(generics.CreateAPIView):
 
 class PropertyReviewListView(generics.ListAPIView):
     serializer_class = PropertyReviewSerializer
-    permission_classes = [permissions.AllowAny]  # Use `IsAuthenticated` if necessary
+    permission_classes = [permissions.AllowAny]
     pagination_class = CustomPageNumberPagination
 
     def get_queryset(self):
         property_slug = self.kwargs.get('property_slug')
 
-        # Filter by the property with the given slug
         try:
             from property.models import Property
             property_instance = Property.objects.get(slug=property_slug)
@@ -38,22 +37,32 @@ class PropertyReviewListView(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
+        review_count = queryset.count()  
 
+        # Handle pagination
+        page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            paginated_response = self.get_paginated_response(serializer.data).data
+            paginated_response = self.get_paginated_response(serializer.data)
+
+            # Add review_count to the response
+            paginated_response['review_count'] = review_count
+
             return PrepareResponse(
                 success=True,
                 message="Hotel review list retrieved successfully",
                 data=paginated_response
             ).send(code=status.HTTP_200_OK)
 
+        # If no pagination, return full results with review_count
         serializer = self.get_serializer(queryset, many=True)
         return PrepareResponse(
             success=True,
             message="Hotel review list retrieved successfully",
-            data=serializer.data
+            data={
+                'review_count': review_count,
+                'results': serializer.data
+            }
         ).send(code=status.HTTP_200_OK)
 
     
@@ -81,7 +90,7 @@ class GuestReviewListView(generics.ListAPIView):
 
         if page is not None:
             serializer = self.get_serializer(page, many=True)
-            paginated_response = self.get_paginated_response(serializer.data).data
+            paginated_response = self.get_paginated_response(serializer.data)
             return PrepareResponse(
                 success=True,
                 message="Guest review list retrieved successfully",
