@@ -1,23 +1,37 @@
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from .models import PropertyReview, GuestReview
 from .serializers import PropertyReviewSerializer, GuestReviewSerializer
 from core.utils.response import PrepareResponse
 from core.utils.pagination import CustomPageNumberPagination
+from bookings.models import Booking
 
 class PropertyReviewCreateView(generics.CreateAPIView):
-    queryset = GuestReview.objects.all()
+    queryset = PropertyReview.objects.all()
     serializer_class = PropertyReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
+        # Check if the user has a valid booking and has checked in
+        property_id = request.data.get('property')
+        booking_exists = Booking.objects.filter(
+            user=request.user,
+            property_id=property_id,
+            status='checked_in'
+        ).exists()
+
+        if not booking_exists:
+            raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+
+        # Proceed to create the review
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
         return PrepareResponse(
             success=True,
-            message="Review created successfully",
+            message="Property review created successfully",
             data=serializer.data
-        ).send(200)
+        ).send()
 
 class PropertyReviewListView(generics.ListAPIView):
     serializer_class = PropertyReviewSerializer
@@ -32,20 +46,19 @@ class PropertyReviewListView(generics.ListAPIView):
             property_instance = Property.objects.get(slug=property_slug)
         except Property.DoesNotExist:
             return PropertyReview.objects.none()
-
-        return PropertyReview.objects.filter(property=property_instance)
+        return PropertyReview.objects.filter(
+            property_reviewed=property_instance, parent__isnull=True
+        ).prefetch_related('replies')
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        review_count = queryset.count()  
+        review_count = queryset.count()
 
         # Handle pagination
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             paginated_response = self.get_paginated_response(serializer.data)
-
-            # Add review_count to the response
             paginated_response['review_count'] = review_count
 
             return PrepareResponse(
@@ -53,8 +66,6 @@ class PropertyReviewListView(generics.ListAPIView):
                 message="Hotel review list retrieved successfully",
                 data=paginated_response
             ).send(code=status.HTTP_200_OK)
-
-        # If no pagination, return full results with review_count
         serializer = self.get_serializer(queryset, many=True)
         return PrepareResponse(
             success=True,
@@ -110,14 +121,78 @@ class GuestReviewCreateView(generics.CreateAPIView):
     serializer_class = GuestReviewSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def create(self, request, *args, **kwargs): 
+    def create(self, request, *args, **kwargs):
+        property_id = request.data.get('property')
+        booking_exists = Booking.objects.filter(
+            user=request.user,
+            property_id=property_id,
+            status='checked_in'
+        ).exists()
+
+        if not booking_exists:
+            raise PermissionDenied("You are not authorized to review this property. Please check in first.")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        response = PrepareResponse(
+        return PrepareResponse(
             success=True,
             message="Guest review created successfully",
             data=serializer.data
-        )
-        return response.send()
+        ).send()
+    
+
+##############################UserReviewList###################################
+class UserPropertyReviewsListView(generics.ListAPIView):
+    serializer_class = PropertyReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return PropertyReview.objects.filter(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data)
+            return PrepareResponse(
+                success=True,
+                message="User property reviews retrieved successfully",
+                data=paginated_response
+            ).send()
+
+        serializer = self.get_serializer(queryset, many=True)
+        return PrepareResponse(
+            success=True,
+            message="User property reviews retrieved successfully",
+            data=serializer.data
+        ).send()
+    
+class UserGuestReviewsListView(generics.ListAPIView):
+    serializer_class = GuestReviewSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return GuestReview.objects.filter(property__reviews__user=self.request.user).distinct()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data)
+            return PrepareResponse(
+                success=True,
+                message="User guest reviews retrieved successfully",
+                data=paginated_response
+            ).send()
+
+        serializer = self.get_serializer(queryset, many=True)
+        return PrepareResponse(
+            success=True,
+            message="User guest reviews retrieved successfully",
+            data=serializer.data
+        ).send()
 

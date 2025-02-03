@@ -33,20 +33,21 @@ class PropertySearchSerializer(serializers.ModelSerializer):
     review_count = serializers.SerializerMethodField()
     city_name = serializers.SerializerMethodField()
     images = PropertyImageSerializer(many=True, read_only=True)
+    free_cancellation = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
         fields = [
             'id', 'property_name', 'short_description', 'city_name', 'rooms',
-            'rating', 'review_count', 'images','slug'
+            'rating', 'review_count', 'images','slug','free_cancellation'
         ]
 
     def get_rating(self, obj):
-        avg_rating = PropertyReview.objects.filter(property=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
+        avg_rating = PropertyReview.objects.filter(property_reviewed=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
         return avg_rating or 0
 
     def get_review_count(self, obj):
-        return PropertyReview.objects.filter(property=obj).count()
+        return PropertyReview.objects.filter(property_reviewed=obj).count()
 
     def get_short_description(self, obj):
         if obj.description:
@@ -68,8 +69,6 @@ class PropertySearchSerializer(serializers.ModelSerializer):
             no_of_available_rooms__gte=rooms_requested,
             max_no_of_guests__gte=max_guests
         )
-
-        # Apply date filters only if both check_in and check_out are provided
         if check_in and check_out:
             room_query = room_query.exclude(
                 bookings__check_in__lt=check_out,
@@ -78,6 +77,14 @@ class PropertySearchSerializer(serializers.ModelSerializer):
 
         available_rooms = room_query
         return RoomTypeSerializer(available_rooms, many=True).data
+    def get_free_cancellation(self, obj):
+        try:
+            cancellation_policy = obj.cancellation_policy.first()
+            if cancellation_policy and cancellation_policy.cancellations_allowed and cancellation_policy.cancellation_fee_type == 'none':
+                return "Free cancellation available"
+        except AttributeError:
+            return None
+        return None
     
 
 class TrendingDestinationSerializer(serializers.ModelSerializer):
@@ -120,11 +127,11 @@ class PropertySerializer(serializers.ModelSerializer):
         return obj.category.description
 
     def get_rating(self, obj):
-        avg_rating = PropertyReview.objects.filter(property=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
+        avg_rating = PropertyReview.objects.filter(property_reviewed=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
         return avg_rating or 0
 
     def get_review_count(self, obj):
-        return PropertyReview.objects.filter(property=obj).count()
+        return PropertyReview.objects.filter(property_reviewed=obj).count()
 
     def get_short_description(self, obj):
         if obj.description:
@@ -181,6 +188,7 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
     rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
     city_name=serializers.SerializerMethodField()
+    
 
     class Meta:
         model = Property
@@ -207,11 +215,11 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
         return PropertyAmenitiesSerializer(amenities, many=True).data
     
     def get_rating(self, obj):
-        avg_rating = PropertyReview.objects.filter(property=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
+        avg_rating = PropertyReview.objects.filter(property_reviewed=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
         return avg_rating or 0
 
     def get_review_count(self, obj):
-        return PropertyReview.objects.filter(property=obj).count()
+        return PropertyReview.objects.filter(property_reviewed=obj).count()
     def get_city_name(self, obj):
         return obj.city.city_name
     

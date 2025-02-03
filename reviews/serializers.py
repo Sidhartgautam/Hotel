@@ -1,30 +1,58 @@
 from rest_framework import serializers
-from django.db.models import Avg
+from django.db.models import Avg,F
 from django.db import models
 from .models import GuestReview,PropertyReview
 
 class PropertyReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.username', read_only=True)
+    replies = serializers.SerializerMethodField()
+
     class Meta:
         model = PropertyReview
-        fields = ['id', 'property', 'user_name', 'comment', 'rating', 'created_at']
-        read_only_fields = ['id', 'created_at', 'user_name','rating']
+        fields = ['id', 'property_reviewed', 'user_name', 'comment', 'rating', 'parent', 'replies', 'created_at']
+        read_only_fields = ['id', 'created_at', 'user_name', 'rating', 'replies']
+
+    def get_replies(self, obj):
+        replies = obj.replies.all()
+        return ReplySerializer(replies, many=True).data
+    
+    def validate(self, data):
+        parent = data.get('parent')
+        if parent:
+            property_owner = parent.property_reviewed.user.is_hotel_owner
+            request_user = self.context['request'].user
+
+            if property_owner != request_user:
+                raise serializers.ValidationError("Only the property owner can reply to this review.")
+
+        return data
+
 
     def validate_rating(self, value):
         if value >= 10:
             raise serializers.ValidationError("Rating must be less than 10.")
         return value
+
     def create(self, validated_data):
-        property = validated_data['property']
-        guest_review_average = GuestReview.objects.filter(property=property).aggregate(
-            avg_rating=Avg(
-                (models.F('staff') + models.F('facilities') + models.F('cleanliness') +
-                 models.F('comfort') + models.F('value_for_money') +
-                 models.F('location') + models.F('free_wifi')) / 7
-            )
-        )['avg_rating']
-        validated_data['rating'] = guest_review_average or 0
+        parent = validated_data.get('parent')
+        if parent is None:
+            property_reviewed = validated_data['property_reviewed']
+            guest_review_average = GuestReview.objects.filter(property=property_reviewed).aggregate(
+                avg_rating=Avg(
+                    (F('staff') + F('facilities') + F('cleanliness') +
+                     F('comfort') + F('value_for_money') + F('location') + F('free_wifi')) / 7
+                )
+            )['avg_rating']
+            validated_data['rating'] = guest_review_average or 0
         return PropertyReview.objects.create(user=self.context['request'].user, **validated_data)
+    
+class ReplySerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only=True)
+
+    class Meta:
+        model = PropertyReview
+        fields = ['id', 'property_reviewed', 'user_name', 'comment', 'replies', 'created_at']
+        read_only_fields = ['id', 'property_reviewed', 'user_name', 'created_at', 'replies']
 
 class GuestReviewSerializer(serializers.ModelSerializer):
     average_rating = serializers.SerializerMethodField()

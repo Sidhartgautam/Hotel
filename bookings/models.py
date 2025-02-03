@@ -21,6 +21,7 @@ class Booking(models.Model):
         ('pending', 'Pending'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user=models.ForeignKey('users.User',on_delete=models.CASCADE,related_name="bookings",help_text="The user who made the booking.",null=True,blank=True)
     property = models.ForeignKey(
         Property,
         on_delete=models.CASCADE,
@@ -38,6 +39,7 @@ class Booking(models.Model):
     num_guests = models.PositiveIntegerField(help_text="Number of guests for the booking.")
     customer_name = models.CharField(max_length=255, help_text="Name of the customer.")
     customer_email = models.EmailField(help_text="Email of the customer.")
+    guest_status = models.CharField(max_length=20, choices=[('checked_in', 'Checked In'), ('checked_out', 'Checked Out')],null=True,blank=True)
     booking_date = models.DateField(auto_now_add=True, help_text="Date when the booking was made.")
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES,null=True,blank=True)
     payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending',null=True,blank=True)

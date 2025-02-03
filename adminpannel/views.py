@@ -21,6 +21,8 @@ from rooms.models import (
 
 
 )
+
+from offers.models import WeeklyOffer
 from .serializers import (PropertySerializer,
                           ParkingInfoSerializer,
                           BreakfastInfoSerializer,
@@ -35,7 +37,9 @@ from .serializers import (PropertySerializer,
                           RoomBedSerializer,
                           PriceSerializer,
                           RoomImagesSerializer,
-                          CancellationPolicySerializer
+                          CancellationPolicySerializer,
+                          WeeklyOfferSerializer,
+                          PropertyFAQCreateSerializer
 
 )
 
@@ -865,5 +869,66 @@ class PriceUpdateDeleteView(generics.GenericAPIView):
                 message="Failed to delete price",
                 errors=str(e),
             ).send(status.HTTP_400_BAD_REQUEST)
+        
+
+#####################################Weekly offers###########################################
+
+class WeeklyOfferCreateView(generics.CreateAPIView):
+    queryset = WeeklyOffer.objects.all()
+    serializer_class = WeeklyOfferSerializer
+    permission_classes = [IsHotelAndHotelOwnerPermission]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            offer_instance = serializer.save()
+            return PrepareResponse(
+                success=True,
+                message="Weekly offer created successfully",
+                data=serializer.data,
+            ).send(200)
+        except Exception as e:
+            return PrepareResponse(
+                success=False,
+                message="Failed to create weekly offer",
+                errors=str(e),
+            ).send(400)
+        
+class WeeklyOfferListView(generics.ListAPIView):
+    queryset = WeeklyOffer.objects.all()
+    serializer_class = WeeklyOfferSerializer
+    permission_classes = [IsHotelAndHotelOwnerPermission]
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return PrepareResponse(
+            success=True,
+            message="Weekly offers retrieved successfully",
+            data=serializer.data,
+        ).send(200)
+
+############################Property Faq#############################################
+class PropertyFAQCreateView(generics.GenericAPIView):
+    serializer_class = PropertyFAQCreateSerializer
+    permission_classes = [IsHotelAndHotelOwnerPermission]
+
+    def post(self, request, *args, **kwargs):
+        property_slug = self.kwargs.get('property_slug')
+
+        try:
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PrepareResponse(success=False, message="Property not found").send(404)
+        if request.user != property_instance.user.is_hotel_owner:
+            return PrepareResponse(success=False, message="Only the property owner can add FAQs").send(403)
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(property=property_instance, user=request.user)
+            return PrepareResponse(success=True, data=serializer.data, message="Property FAQ added").send(201)
+
+        return PrepareResponse(success=False, data=serializer.errors, message="Failed to add FAQ").send(400)
+
 
 

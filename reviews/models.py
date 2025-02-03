@@ -7,11 +7,20 @@ from django.core.exceptions import ValidationError
 
 class PropertyReview(models.Model):
     id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    property = models.ForeignKey(Property, related_name='reviews', on_delete=models.CASCADE)
+    property_reviewed = models.ForeignKey(Property, related_name='reviews', on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     comment = models.TextField()
-    rating = models.FloatField()
+    rating = models.FloatField(null=True, blank=True)
+    parent = models.ForeignKey(
+        'self', on_delete=models.CASCADE, related_name='replies', null=True, blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+    @property
+    def is_reply(self):
+        return self.parent is not None
+
+    def __str__(self):
+        return f"Review by {self.user} on {self.property_reviewed}"
 
 class GuestReview(models.Model):
     id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

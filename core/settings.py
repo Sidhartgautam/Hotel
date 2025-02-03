@@ -68,6 +68,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -76,6 +77,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.utils.country_middleware.CountryDomainMiddleware',
 ]
 
 ROOT_URLCONF = 'core.urls'
@@ -207,11 +209,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.74:8000",
     "http://192.168.1.106:3000",
     "http://192.168.1.121:8000",
-    "http://web-production-81c74.up.railway.app",
-    "https://multivendor-mt.vercel.app",
     "https://www.moredealsclub.com",
-    "https://marketplace-admin-mt.vercel.app",
-    "https://marketplace-kappa-amber.vercel.app"
+    "https://moreliving.vercel.app"
 
 ]
 

@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from property.models import Property,ParkingInfo,BreakfastInfo,Amenity,PropertyAmenities,PropertyImage,Policy,CancellationPolicy
 from rooms.models import RoomAmenities,RoomType,RoomBed,Price,RoomImages
+from offers.models import WeeklyOffer
+from faq.models import PropertyFAQ
 
 class PropertySerializer(serializers.ModelSerializer):
     class Meta:
@@ -250,3 +252,49 @@ class BulkRoomImagesSerializer(serializers.Serializer):
         images = validated_data['images']
         room_images = [RoomImages(room_type=room_type, image=image) for image in images]
         return RoomImages.objects.bulk_create(room_images)
+    
+
+#########################offers###########################################
+class WeeklyOfferSerializer(serializers.ModelSerializer):
+    property_name = serializers.ReadOnlyField(source='property.property_name')
+
+    class Meta:
+        model = WeeklyOffer
+        fields = ['id', 'property', 'property_name', 'discount_percentage', 'start_date', 'end_date', 'description']
+        read_only_fields = ['id', 'property_name']
+
+    def validate(self, data):
+        # Ensure start_date is not greater than end_date
+        if data['start_date'] > data['end_date']:
+            raise serializers.ValidationError("Start date cannot be greater than end date.")
+        return data
+
+    def create(self, validated_data):
+        return WeeklyOffer.objects.create(**validated_data)
+    
+
+######################PropertyFaqCreateSerializer#######################
+class ReplyCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PropertyFAQ
+        fields = ['question_text']
+
+class PropertyFAQCreateSerializer(serializers.ModelSerializer):
+    replies = ReplyCreateSerializer(many=True, required=False)
+
+    class Meta:
+        model = PropertyFAQ
+        fields = ['question_text', 'replies']
+
+    def create(self, validated_data):
+        replies_data = validated_data.pop('replies', [])
+        faq = PropertyFAQ.objects.create(**validated_data)
+        for reply_data in replies_data:
+            PropertyFAQ.objects.create(
+                property=faq.property,
+                user=faq.user,
+                parent=faq,
+                question_text=reply_data['question_text']
+            )
+
+        return faq

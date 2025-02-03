@@ -1,11 +1,12 @@
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework import status
+from rest_framework import status,generics
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 from core.utils.response import PrepareResponse
+from core.utils.pagination import CustomPageNumberPagination
 from .models import Booking, RoomType, Property
-from .serializers import BookingCreateSerializer
+from .serializers import BookingCreateSerializer,BookingListSerializer
 from core.utils.booking import calculate_booking_price 
 from core.utils.cancellation import cancel_booking
 from core.utils.moredealstoken import get_moredeals_token
@@ -36,10 +37,7 @@ class BookingCreateAPIView(APIView):
 
         try:
             with transaction.atomic():
-                # Save the booking instance
                 booking = serializer.save(user=request.user, total_price=total_price)
-
-                # Process the payment
                 payment_status, message = self.process_payment(
                     request=request,
                     payment_method=validated_data.get('payment_method'),
@@ -47,8 +45,6 @@ class BookingCreateAPIView(APIView):
                     user=request.user,
                     booking=booking
                 )
-
-                # Update payment status in the booking instance
                 booking.payment_status = payment_status.lower()
                 booking.save()
 
@@ -157,3 +153,35 @@ class BookingCancellationView(APIView):
                 success=False,
                 message=str(e),
             ).send(status.HTTP_400_BAD_REQUEST)
+        
+class UserBookingListView(generics.ListAPIView):
+    serializer_class = BookingListSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = CustomPageNumberPagination
+
+    def get_queryset(self):
+        return Booking.objects.filter(user=self.request.user).order_by('-booking_date')
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        booking_count = queryset.count()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            paginated_response = self.get_paginated_response(serializer.data)
+            paginated_response.data['booking_count'] = booking_count
+
+            return PrepareResponse(
+                success=True,
+                message="User bookings retrieved successfully",
+                data=paginated_response.data
+            ).send(code=status.HTTP_200_OK)
+        serializer = self.get_serializer(queryset, many=True)
+        return PrepareResponse(
+            success=True,
+            message="User bookings retrieved successfully",
+            data={
+                'booking_count': booking_count,
+                'results': serializer.data
+            }
+        ).send(code=status.HTTP_200_OK)

@@ -22,7 +22,12 @@ from .views import (PropertyCreateView,
                     RoomBedUpdateDeleteView,
                     PriceUpdateDeleteView,
                     CancellationPolicyCreateView,
-                    CancellationPolicyUpdateDeleteView
+                    CancellationPolicyUpdateDeleteView,
+                    PropertyFAQCreateView,
+                    WeeklyOfferCreateView,
+                    WeeklyOfferListView
+
+                    
 
 
 
@@ -61,4 +66,11 @@ urlpatterns = [
     path('room-images/<uuid:pk>/', RoomImagesUpdateDeleteView.as_view(), name='room-images-update-delete'),
     path('room-beds/<uuid:pk>/', RoomBedUpdateDeleteView.as_view(), name='room-bed-update-delete'),
     path('prices/<uuid:pk>/', PriceUpdateDeleteView.as_view(), name='price-update-delete'),
+
+    #################################PropertyFAQCreate#########################################
+    path('property/<slug:property_slug>/faq/create/', PropertyFAQCreateView.as_view(), name='property-faq-create'),
+
+    #################################WeeklyOfferCreate#########################################
+    path('weekly-offer/create/', WeeklyOfferCreateView.as_view(), name='weekly-offer-create'),
+    path('weekly-offer/list/', WeeklyOfferListView.as_view(), name='weekly-offer-list'),
 ]

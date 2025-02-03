@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions,status
 from .models import PropertyFAQ, MoreLivingFAQ
-from .serializers import PropertyFAQSerializer, WebsiteFAQSerializer
+from .serializers import PropertyFAQSerializer,PropertyFAQListSerializer, WebsiteFAQSerializer
 from property.models import Property
 from core.utils.response import PrepareResponse
 from core.utils.pagination import CustomPageNumberPagination
@@ -41,40 +41,43 @@ class PropertyFAQCreateView(generics.GenericAPIView):
 
 
 class PropertyFAQListView(generics.ListAPIView):
-    serializer_class = PropertyFAQSerializer
-    pagination_class = CustomPageNumberPagination
+    serializer_class = PropertyFAQListSerializer
     permission_classes = [permissions.AllowAny]
+    pagination_class = CustomPageNumberPagination
 
     def get_queryset(self):
         property_slug = self.kwargs.get('property_slug')
-        
-        # Ensure the property exists and fetch its FAQs
-        try:
-            property_instance = Property.objects.get(slug=property_slug)
-        except Property.DoesNotExist:
-            return PropertyFAQ.objects.none()
 
-        return PropertyFAQ.objects.filter(property_id=property_instance.id, parent__isnull=True).order_by('-created_at')
+        return PropertyFAQ.objects.filter(property__slug=property_slug, parent__isnull=True).prefetch_related('replies')
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
+        faq_count = queryset.count()
 
+        # Handle pagination
+        page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             paginated_response = self.get_paginated_response(serializer.data)
+            paginated_response_data = paginated_response  
+            paginated_response_data['faq_count'] = faq_count
+
             return PrepareResponse(
                 success=True,
-                message="Property FAQs retrieved successfully.",
-                data=paginated_response
+                message="Property FAQs retrieved successfully",
+                data=paginated_response_data
             ).send(code=status.HTTP_200_OK)
 
         serializer = self.get_serializer(queryset, many=True)
         return PrepareResponse(
             success=True,
-            message="Property FAQs retrieved successfully.",
-            data=serializer.data
+            message="Property FAQs retrieved successfully",
+            data={
+                'faq_count': faq_count,
+                'results': serializer.data
+            }
         ).send(code=status.HTTP_200_OK)
+
         
 
 

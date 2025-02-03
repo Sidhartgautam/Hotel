@@ -69,4 +69,17 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         """
         validated_data['total_price'] = calculate_booking_price(validated_data)
         return Booking.objects.create(**validated_data)
+    
+class BookingListSerializer(serializers.ModelSerializer):
+    property_name = serializers.CharField(source='property.property_name', read_only=True)
+    room_name = serializers.CharField(source='room.room_name', read_only=True)
+
+    class Meta:
+        model = Booking
+        fields = [
+            'id', 'property_name', 'room_name', 'check_in', 'check_out', 'num_guests',
+            'customer_name', 'customer_email', 'total_price', 'payment_status',
+            'cancellation_status', 'booking_date'
+        ]
+        read_only_fields = fields
 
