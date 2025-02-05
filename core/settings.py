@@ -220,7 +220,7 @@ else:
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CSRF_TRUSTED_ORIGINS = [
-    "https://hotel-one-ochre.vercel.app"
+    "https://hotel-production-f109.up.railway.app"
 ]
 
 CORS_ALLOWED_ORIGINS = [
