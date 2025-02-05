@@ -1,5 +1,5 @@
 # Create necessary directories
-mkdir -p staticfiles_build media
+mkdir -p static 
 # Install dependencies
 pip3 install -r requirements.txt
 
