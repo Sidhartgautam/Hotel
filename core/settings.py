@@ -193,9 +193,9 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
 if DEBUG:
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build')
+    STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 else:
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build')
+    STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 
 
@@ -205,6 +205,9 @@ else:
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+CSRF_TRUSTED_ORIGINS = [
+    "hotel-one-ochre.vercel.app"
+]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
@@ -215,7 +218,8 @@ CORS_ALLOWED_ORIGINS = [
     "http://192.168.1.106:3000",
     "http://192.168.1.121:8000",
     "https://www.moredealsclub.com",
-    "https://moreliving.vercel.app"
+    "https://moreliving.vercel.app",
+    "https://hotel-one-ochre.vercel.app"
 
 ]
 
