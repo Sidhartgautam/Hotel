@@ -188,6 +188,7 @@ CLOUDINARY_STORAGE = {
     'API_KEY': '831421472727561',
     'API_SECRET': 'IeJhUr7jhK9-qU-yjm3n_xGG3Js',
 }
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 
@@ -196,7 +197,8 @@ if DEBUG:
 else:
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build')
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
 
 
 # Default primary key field type
