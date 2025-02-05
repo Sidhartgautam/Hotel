@@ -30,7 +30,7 @@ SECRET_KEY = 'django-insecure-o2-bwvntyw5n*f^=a!*fp!rdnq41=4o54gv)igbq!(ry*23av&
 STRIPE_SECRET_KEY = config('STRIPE_SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
