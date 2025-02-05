@@ -10,19 +10,14 @@
       "src": "build_files.sh",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "static"
+        "distDir": "staticfiles_build"
       }
     }
   ],
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/static/$1",
-      "headers": { "Cache-Control": "public, max-age=31536000, immutable" }
-    },
-    {
-      "src": "/media/(.*)",
-      "dest": "/media/$1"
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",

@@ -7,7 +7,7 @@ from drf_spectacular.views import (
 )
 
 # Correct the variable name from `url_patterns` to `urlpatterns`
-urlpatterns = [
+url_patterns = [
     path('admin/', admin.site.urls),
     path("docs/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("docs/swagger/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
@@ -19,6 +19,6 @@ urlpatterns = [
 # If needed, you can add static files handling back:
 from django.conf import settings
 from django.conf.urls.static import static
-urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(
-    settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
-)
+urlpatterns = static(
+    settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(
+    settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) + url_patterns

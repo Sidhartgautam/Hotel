@@ -180,12 +180,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 
-CLOUDINARY_STORAGE = {
-    'CLOUD_NAME': 'dvmqwrhbx',
-    'API_KEY': '831421472727561',
-    'API_SECRET': 'IeJhUr7jhK9-qU-yjm3n_xGG3Js',
-}
-
 
 # STATIC_URL = '/static/'
 
@@ -200,8 +194,22 @@ CLOUDINARY_STORAGE = {
 #     STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-# STATICFILES_DIRS = [os.path.join(BASE_DIR, 'staticfiles')]
+
+MEDIA_URL = '/media/'
+
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'dvmqwrhbx',
+    'API_KEY': '831421472727561',
+    'API_SECRET': 'IeJhUr7jhK9-qU-yjm3n_xGG3Js',
+}
+
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+if DEBUG:
+    # STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build')
+else:
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles_build')
 
 
 
