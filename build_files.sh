@@ -1,10 +1,5 @@
-#!/bin/bash
-
 # Create necessary directories
-mkdir -p static media
-
-# Export static root for collectstatic
-export STATIC_ROOT=static
+mkdir -p staticfiles_build media
 
 # Install dependencies
 pip3 install -r requirements.txt
