@@ -33,11 +33,16 @@ class Booking(models.Model):
         on_delete=models.CASCADE,
         related_name="bookings",
         help_text="The room type this booking is for.",
+        null=True,
+        blank=True
     )
     check_in = models.DateField(help_text="Check-in date for the booking.")
     check_out = models.DateField(help_text="Check-out date for the booking.")
     num_guests = models.PositiveIntegerField(help_text="Number of guests for the booking.")
-    customer_name = models.CharField(max_length=255, help_text="Name of the customer.")
+    customer_phone = models.CharField(max_length=20, help_text="Phone number of the customer.",null=True,blank=True)
+    first_name = models.CharField(max_length=255, help_text="First name of the customer.",null=True,blank=True)
+    last_name = models.CharField(max_length=255, help_text="Last name of the customer.",null=True,blank=True)
+    country=models.ForeignKey('country.Country',on_delete=models.CASCADE,related_name="bookings",null=True,blank=True)
     customer_email = models.EmailField(help_text="Email of the customer.")
     guest_status = models.CharField(max_length=20, choices=[('checked_in', 'Checked In'), ('checked_out', 'Checked Out')],null=True,blank=True)
     booking_date = models.DateField(auto_now_add=True, help_text="Date when the booking was made.")

@@ -18,8 +18,15 @@ class PropertySearchView(APIView):
         check_out = request.query_params.get('check_out', None)
         adults = int(request.query_params.get('adults', 0))
         children = int(request.query_params.get('children', 0))
-        rooms_requested = int(request.query_params.get('rooms', 1))  # Default to 1 if not provided
+        rooms_requested = int(request.query_params.get('rooms', 1)) 
         max_guests = adults + children
+        min_price = request.query_params.get('min_price', None)
+        max_price = request.query_params.get('max_price', None)
+        star_rating = request.query_params.get('star_rating', None)
+        amenities = request.query_params.getlist('amenities', [])
+        property_type = request.query_params.get('property_type', None)
+        pets_allowed = request.query_params.get('pets_allowed', None)
+        free_cancellation = request.query_params.get('free_cancellation', None)  
 
         if not location:
             return Response(
@@ -42,11 +49,26 @@ class PropertySearchView(APIView):
                     {"error": "Invalid date format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-
-        # Filter properties based on location
         properties = Property.objects.filter(
             city__city_name__icontains=location
         )
+        if min_price and max_price:
+            properties = properties.filter(single_unit_price__base_price_per_night__range=(min_price, max_price))
+
+        if star_rating:
+            properties = properties.filter(star_rating_property__gte=int(star_rating))
+
+        if property_type:
+            properties = properties.filter(category__category_name__icontains=property_type)
+
+        if amenities:
+            properties = properties.filter(amenities__amenity__name__in=amenities).distinct()
+
+        if pets_allowed:
+            properties = properties.filter(policies__pets_allowed=(pets_allowed.lower() == 'true'))
+
+        if free_cancellation:
+            properties = properties.filter(cancellation_policy__cancellation_fee_type='none')
 
         # Filter properties with available rooms if dates are provided
         if check_in and check_out:

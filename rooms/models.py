@@ -29,7 +29,14 @@ class RoomAmenities(models.Model):
     Amenities specific to individual rooms.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-
+    room_type = models.ForeignKey(
+        'RoomType',
+        on_delete=models.CASCADE,
+        related_name='all_room_amenities',  # Unique related name
+        help_text="Room type that these amenities belong to",
+        null=True,
+        blank=True
+    )
     # General Room Amenities
     air_conditioning = models.BooleanField(default=False)
     free_wifi = models.BooleanField(default=False)
@@ -199,7 +206,7 @@ class RoomType(models.Model):
     room_amenities = models.OneToOneField(
         RoomAmenities, 
         on_delete=models.CASCADE, 
-        related_name="room_type"
+        related_name="single_room_amenities"
     )
 
 

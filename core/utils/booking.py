@@ -1,54 +1,68 @@
-from datetime import timedelta
+from datetime import timedelta, date
 from rooms.models import Price
 from offers.models import WeeklyOffer
-from datetime import date
+from property.models import SingleUnitPrice
 
 def calculate_booking_price(validated_data):
-    room = validated_data.get('room')
+    """
+    Calculate the total price for a booking. Handles both single-unit and multi-room properties.
+    """
     property_obj = validated_data.get('property')
+    room = validated_data.get('room')
     check_in = validated_data.get('check_in')
     check_out = validated_data.get('check_out')
     num_guests = validated_data.get('num_guests', 1)
-
-    # Fetch the price object for the room
-    try:
-        price = Price.objects.get(room_type=room)
-    except Price.DoesNotExist:
-        raise ValueError("Price for the selected room type is not defined.")
 
     # Calculate the number of nights
     nights = (check_out - check_in).days
     if nights <= 0:
         raise ValueError("Check-out date must be later than check-in date.")
 
-    # Calculate the base price for the stay
-    base_price = price.base_price_per_night * nights
+    # Handle single-unit property pricing
+    if property_obj.is_single_unit:
+        if not hasattr(property_obj, 'single_unit_price'):
+            raise ValueError("Single-unit price is not defined for this property.")
 
-    # Apply dynamic offers if available
-    base_price = apply_offer(property_obj, check_in, check_out, base_price)
+        # Get the effective price for the single unit
+        base_price = property_obj.single_unit_price.get_effective_price() * nights
+    else:
+        # Handle multi-room property pricing
+        if not room:
+            raise ValueError("Room must be provided for multi-room properties.")
 
-    # Calculate extra charges for additional guests
-    extra_guest_price = 0
-    if num_guests > 1:  # Assuming base capacity is 1 guest
-        extra_guest_price = (num_guests - 1) * price.extra_guest_price * nights
+        # Fetch the price object for the room
+        try:
+            price = Price.objects.get(room_type=room)
+        except Price.DoesNotExist:
+            raise ValueError("Price for the selected room type is not defined.")
 
-    # Calculate additional charges (e.g., breakfast, parking)
-    breakfast_price = price.breakfast_price * nights if validated_data.get('include_breakfast', False) else 0
-    parking_price = price.parking_price * nights if validated_data.get('include_parking', False) else 0
+        # Calculate the base price for the stay
+        base_price = price.base_price_per_night * nights
 
-    # Apply any discounts
-    discount = 0
-    if price.discount_percentage > 0:
-        discount = (base_price + extra_guest_price + breakfast_price + parking_price) * (price.discount_percentage / 100)
+        # Calculate extra charges
+        extra_guest_price = 0
+        if num_guests > price.base_capacity:
+            extra_guest_price = (num_guests - price.base_capacity) * price.extra_guest_price * nights
 
-    # Total price calculation
-    total_price = base_price + extra_guest_price + breakfast_price + parking_price - discount
+        breakfast_price = price.breakfast_price * nights if validated_data.get('include_breakfast', False) else 0
+        parking_price = price.parking_price * nights if validated_data.get('include_parking', False) else 0
+
+        # Add extra charges to the base price
+        base_price += extra_guest_price + breakfast_price + parking_price
+
+    # Apply dynamic offers (if available)
+    total_price = apply_offer(property_obj, check_in, check_out, base_price)
 
     return round(total_price, 2)
 
 
 def apply_offer(property_obj, check_in, check_out, base_price):
+    """
+    Apply seasonal and weekly offers to the base price and return the final price.
+    """
     best_discount = 0
+
+    # Apply seasonal pricing if applicable
     seasonal_price = Price.objects.filter(
         property=property_obj,
         is_seasonal=True,
@@ -58,6 +72,8 @@ def apply_offer(property_obj, check_in, check_out, base_price):
     if seasonal_price:
         seasonal_discount = (seasonal_price.discount_percentage / 100) * base_price
         best_discount = max(best_discount, seasonal_discount)
+
+    # Apply weekly offers if applicable
     weekly_offer = WeeklyOffer.objects.filter(
         property=property_obj,
         start_date__lte=check_out,

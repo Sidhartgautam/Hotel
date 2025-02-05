@@ -20,6 +20,12 @@ class PropertyCategory(models.Model):
 class Property(models.Model):
     id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     property_name = models.CharField(max_length=50)
+    is_single_unit = models.BooleanField(
+        default=False,
+        help_text="Indicates if this property is booked as a single unit (e.g., cottage or villa).",
+        null=True,
+        blank=True
+    )
     address = models.CharField(max_length=50)
     description = models.TextField()
     star_rating_property=models.IntegerField(default=0,null=True,blank=True)
@@ -278,3 +284,27 @@ class CancellationPolicy(models.Model):
 
     def __str__(self):
         return f"Cancellation Policy for {self.property.property_name}"
+    
+class SingleUnitPrice(models.Model):
+    property = models.OneToOneField(
+        Property, 
+        on_delete=models.CASCADE, 
+        related_name='single_unit_price'
+    )
+    base_price_per_night = models.DecimalField(max_digits=10, decimal_places=2)
+    seasonal_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    discount_percentage = models.FloatField(default=0)
+
+    def get_effective_price(self):
+        price = self.seasonal_price if self.seasonal_price else self.base_price_per_night
+        if self.discount_percentage > 0:
+            price -= price * (self.discount_percentage / 100)
+        return round(price, 2)
+
+    def save(self, *args, **kwargs):
+        if self.base_price_per_night is None:
+            raise ValueError("Base price per night is required.")
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Single Unit Price for {self.property.property_name}"

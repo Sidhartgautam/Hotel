@@ -46,6 +46,14 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         check_in = data.get('check_in')
         check_out = data.get('check_out')
         payment_method = data.get('payment_method')
+        property_obj = data.get('property')
+        room = data.get('room')
+
+        ########validationforsingleunit
+        if not room and not property_obj.is_single_unit:
+            raise serializers.ValidationError({
+                "room": "This property requires a room selection unless it is a single-unit property."
+            })
 
         # Validate dates
         if check_in and check_out and check_in >= check_out:
