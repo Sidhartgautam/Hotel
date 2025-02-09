@@ -1,8 +1,8 @@
 from django.db import models
 from datetime import date
 import uuid
-from rooms.models import RoomType  # Adjust the import based on your app structure
-from property.models import Property  # Adjust this import as needed
+from rooms.models import RoomType 
+from property.models import Property 
 
 class Booking(models.Model):
     PAYMENT_METHOD_CHOICES = [
@@ -66,6 +66,5 @@ class Booking(models.Model):
                 name="valid_check_in_out_dates",
             )
         ]
-
     def __str__(self):
         return f"Booking for {self.room.room_name} ({self.check_in} to {self.check_out})"

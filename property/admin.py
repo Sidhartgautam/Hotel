@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import (
     Property,
+    PropertyCategory,
     Amenity,
     BreakfastInfo,
     ParkingInfo,
@@ -82,3 +83,4 @@ class PropertyAdmin(admin.ModelAdmin):
 # Register the Property model with its custom admin class
 admin.site.register(Property, PropertyAdmin)
 admin.site.register(Amenity)
+admin.site.register(PropertyCategory)

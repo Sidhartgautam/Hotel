@@ -12,8 +12,6 @@ def calculate_booking_price(validated_data):
     check_in = validated_data.get('check_in')
     check_out = validated_data.get('check_out')
     num_guests = validated_data.get('num_guests', 1)
-
-    # Calculate the number of nights
     nights = (check_out - check_in).days
     if nights <= 0:
         raise ValueError("Check-out date must be later than check-in date.")
@@ -41,14 +39,16 @@ def calculate_booking_price(validated_data):
 
         # Calculate extra charges
         extra_guest_price = 0
-        if num_guests > price.base_capacity:
-            extra_guest_price = (num_guests - price.base_capacity) * price.extra_guest_price * nights
+        if num_guests > room.max_no_of_guests:
+            extra_guest_price = (num_guests - room.max_no_of_guests) * price.extra_guest_price * nights
 
+        # Optional extra charges
         breakfast_price = price.breakfast_price * nights if validated_data.get('include_breakfast', False) else 0
         parking_price = price.parking_price * nights if validated_data.get('include_parking', False) else 0
 
         # Add extra charges to the base price
         base_price += extra_guest_price + breakfast_price + parking_price
+
 
     # Apply dynamic offers (if available)
     total_price = apply_offer(property_obj, check_in, check_out, base_price)

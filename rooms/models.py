@@ -79,6 +79,48 @@ class RoomAmenities(models.Model):
     kitchenette = models.BooleanField(default=False)  # Mini kitchen
     heating = models.BooleanField(default=False)
 
+    #Campfire
+    campfire_access = models.BooleanField(
+        default=False,
+        help_text="Is there access to a campfire pit?"
+    )
+    outdoor_shower = models.BooleanField(
+        default=False,
+        help_text="Is there an outdoor shower available?"
+    )
+    portable_restroom = models.BooleanField(
+        default=False,
+        help_text="Is there access to a portable restroom?"
+    )
+    rv_hookup = models.BooleanField(
+        default=False,
+        help_text="Is an RV electrical hookup available?"
+    )
+    eco_friendly_facilities = models.BooleanField(
+        default=False,
+        help_text="Are eco-friendly facilities available?"
+    )
+    barbecue_grill = models.BooleanField(
+        default=False,
+        help_text="Is a barbecue grill provided?"
+    )
+    picnic_area = models.BooleanField(
+        default=False,
+        help_text="Is there a designated picnic area?"
+    )
+    hammock = models.BooleanField(
+        default=False,
+        help_text="Is a hammock available?"
+    )
+    outdoor_seating = models.BooleanField(
+        default=False,
+        help_text="Is there outdoor seating (e.g., benches, chairs)?"
+    )
+    nature_trail_access = models.BooleanField(
+        default=False,
+        help_text="Does the site have direct access to nature or hiking trails?"
+    )
+
     def __str__(self):
         return f"Room Amenities (Wi-Fi: {self.free_wifi}, TV: {self.television})"
 
@@ -101,6 +143,9 @@ class RoomType(models.Model):
         ('deluxe', 'Deluxe Room'),
         ('penthouse', 'Penthouse'),
         ('dormitory', 'Dormitory'),
+        ('camping_site', 'Camping Site'),
+        ('glamping_tent', 'Glamping Tent'),
+        ('rv_spot', 'RV Spot'),
     ]
     ROOM_NAME_CHOICES = [
     # Basic Rooms
@@ -171,6 +216,21 @@ class RoomType(models.Model):
     ('superior_room', 'Superior Room'),
     ('premium_room', 'Premium Room'),
     ('presidential_suite', 'Presidential Suite'),
+
+    # Custom Room Names
+    ('camping_site', 'Camping Site'),
+    ('glamping_tent', 'Glamping Tent'),
+    ('rv_spot', 'RV Spot'),
+    ('camping_cabin', 'Camping Cabin'),
+    ('treehouse', 'Treehouse'),
+    ('eco_hut', 'Eco Hut'),
+    ('yurt', 'Yurt'),
+    ('tipi', 'Tipi'),
+    ('safari_tent', 'Safari Tent'),
+    ('overland_vehicle_site', 'Overland Vehicle Site'),
+    ('tent_with_campfire', 'Tent with Campfire Access'),
+    ('luxury_glamping_tent', 'Luxury Glamping Tent'),
+    ('camping_site_with_amenities', 'Camping Site with Amenities'),
 ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

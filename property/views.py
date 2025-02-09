@@ -9,7 +9,7 @@ from datetime import date
 from .models import Property,PropertyCategory,CancellationPolicy,Policy,PropertyAmenities
 from .serializers import CancellationPolicySerializer,PolicySerializer
 
-from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer
+from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer,PropertyByCategorySerializer
 from core.utils.response import PrepareResponse
 class PropertySearchView(APIView):
     def get(self, request):
@@ -160,16 +160,22 @@ class PropertyCategoryListView(generics.ListAPIView):
         ).send(200)
     
 class PropertyByPropertyTypeView(generics.ListAPIView):
-    serializer_class = PropertySerializer
+    serializer_class = PropertyByCategorySerializer
 
     def get_queryset(self):
         property_type_id = self.kwargs.get('property_category_id')
-        queryset = Property.objects.filter(category__id=property_type_id)
-        return queryset
+        return PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
 
     def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
+        queryset = self.get_queryset().first()
+        if not queryset:
+            return PrepareResponse(
+                success=False,
+                message="Category not found",
+                data=[]
+            ).send(404)
+
+        serializer = self.get_serializer(queryset)
         return PrepareResponse(
             success=True,
             message="Properties by property type retrieved successfully",

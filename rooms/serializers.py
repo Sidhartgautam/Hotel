@@ -107,6 +107,7 @@ class RoomDetailsSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoomType
         fields = [
+            'id',
             'room_images',
             'room_amenities',
             'room_size',

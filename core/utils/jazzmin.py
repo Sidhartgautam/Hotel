@@ -29,7 +29,6 @@ JAZZMIN_SETTINGS = {
         "users": "fas fa-user",
     },
 
-    # Customize sidebar menu
     "icons": {
         "auth.Group": "fas fa-users",
         "auth.User": "fas fa-user",

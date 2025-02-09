@@ -35,7 +35,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         model = Booking
         fields = [
             'property', 'room', 'check_in', 'check_out', 'num_guests',
-            'customer_name', 'customer_email', 'payment_method', 'payment_method_id', 
+            'first_name', 'last_name','country', 'customer_email', 'payment_method', 'payment_method_id', 
             'pin', 'total_price'
         ]
 
@@ -72,9 +72,11 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        print("validated_data", validated_data)
         """
         Calculate the total price and create the booking.
         """
+        validated_data.pop('pin', None)
         validated_data['total_price'] = calculate_booking_price(validated_data)
         return Booking.objects.create(**validated_data)
     
@@ -86,7 +88,7 @@ class BookingListSerializer(serializers.ModelSerializer):
         model = Booking
         fields = [
             'id', 'property_name', 'room_name', 'check_in', 'check_out', 'num_guests',
-            'customer_name', 'customer_email', 'total_price', 'payment_status',
+            'first_name', 'last_name','country', 'customer_email', 'total_price', 'payment_status',
             'cancellation_status', 'booking_date'
         ]
         read_only_fields = fields

@@ -8,7 +8,7 @@ from rest_framework import permissions
 class CountryListView(generics.ListAPIView):
     queryset = Country.objects.all()
     serializer_class = CountrySerializer
-    permission_classes = [permissions.IsAdminUser]  # No authentication required
+    # permission_classes = [permissions.IsAdminUser] 
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -39,9 +39,6 @@ class PopularCityView(generics.GenericAPIView):
     serializer_class = PopularCitySerializer
 
     def get_queryset(self):
-        """
-        Query to retrieve all cities and annotate with hotel counts.
-        """
         return City.objects.annotate(hotel_count=Count('hotels')).order_by('-hotel_count')
 
     def get(self, request, *args, **kwargs):

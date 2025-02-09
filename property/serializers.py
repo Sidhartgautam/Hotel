@@ -108,7 +108,6 @@ class TrendingDestinationSerializer(serializers.ModelSerializer):
     
 class PropertySerializer(serializers.ModelSerializer):
     category=serializers.SerializerMethodField()
-    category_description=serializers.SerializerMethodField()
     short_description = serializers.SerializerMethodField()
     rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
@@ -117,14 +116,12 @@ class PropertySerializer(serializers.ModelSerializer):
     class Meta:
         model = Property
         fields = [
-            'id','category','category_description', 'property_name', 'short_description', 'city_name',
-            'rating', 'review_count', 'images'
+            'id','category', 'property_name', 'short_description', 'city_name',
+            'rating', 'review_count', 'images', 'slug'
         ]
     def get_category(self,obj):
         return obj.category.category_name
     
-    def get_category_description(self,obj):
-        return obj.category.description
 
     def get_rating(self, obj):
         avg_rating = PropertyReview.objects.filter(property_reviewed=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
@@ -140,6 +137,17 @@ class PropertySerializer(serializers.ModelSerializer):
 
     def get_city_name(self, obj):
         return obj.city.city_name
+    
+class PropertyByCategorySerializer(serializers.ModelSerializer):
+    properties = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PropertyCategory
+        fields = ['id', 'category_name', 'description', 'properties']
+
+    def get_properties(self, obj):
+        properties = obj.properties.all()
+        return PropertySerializer(properties, many=True).data
 
 class CancellationPolicySerializer(serializers.ModelSerializer):
     class Meta:
