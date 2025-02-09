@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from property.models import Property,ParkingInfo,BreakfastInfo,Amenity,PropertyAmenities,PropertyImage,Policy,CancellationPolicy
+from property.models import Property,ParkingInfo,BreakfastInfo,Amenity,PropertyAmenities,PropertyImage,Policy,CancellationPolicy,SingleUnitPrice
 from rooms.models import RoomAmenities,RoomType,RoomBed,Price,RoomImages
 from offers.models import WeeklyOffer
 from faq.models import PropertyFAQ
@@ -45,6 +45,20 @@ class ParkingInfoSerializer(serializers.ModelSerializer):
         instance.parking_access = validated_data.get('parking_access', instance.parking_access)
         instance.save()
         return instance
+
+class SingleUnitPriceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SingleUnitPrice
+        fields = ['property', 'base_price_per_night', 'seasonal_price', 'discount_percentage']
+        read_only_fields = ['property']
+    def update(self, instance, validated_data):
+        instance.property = validated_data.get('property', instance.property)
+        instance.base_price_per_night = validated_data.get('base_price_per_night', instance.base_price_per_night)
+        instance.seasonal_price = validated_data.get('seasonal_price', instance.seasonal_price)
+        instance.discount_percentage = validated_data.get('discount_percentage', instance.discount_percentage)
+        instance.save()
+        return instance
+    
     
 class BreakfastInfoSerializer(serializers.ModelSerializer):
     breakfast_type = serializers.ListField(

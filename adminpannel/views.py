@@ -39,7 +39,8 @@ from .serializers import (PropertySerializer,
                           RoomImagesSerializer,
                           CancellationPolicySerializer,
                           WeeklyOfferSerializer,
-                          PropertyFAQCreateSerializer
+                          PropertyFAQCreateSerializer,
+                          SingleUnitPriceSerializer
 
 )
 
@@ -232,6 +233,28 @@ class CancellationPolicyCreateView(generics.CreateAPIView):
                 message="Failed to create cancellation policy",
                 errors=str(e)
             ).send(status.HTTP_400_BAD_REQUEST)
+        
+class SinglePropertyPriceCreateView(generics.CreateAPIView):
+    serializer_class = SingleUnitPriceSerializer
+    permission_classes = [IsHotelAndHotelOwnerPermission]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer.is_valid(raise_exception=True)
+            price = serializer.save()
+            return PrepareResponse(
+                success=True,
+                message="Price created successfully",
+                data=serializer.data,
+            ).send(status.HTTP_201_CREATED)
+        except Exception as e:
+            return PrepareResponse(
+                success=False,
+                message="Failed to create price",
+                errors=str(e),
+            ).send(status.HTTP_400_BAD_REQUEST)
+        
 ###############################PropertyUpdateApi#######################################
 class PropertyUpdateDeleteView(generics.GenericAPIView):
     queryset = Property.objects.all()

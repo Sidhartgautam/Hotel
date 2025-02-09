@@ -25,7 +25,8 @@ from .views import (PropertyCreateView,
                     CancellationPolicyUpdateDeleteView,
                     PropertyFAQCreateView,
                     WeeklyOfferCreateView,
-                    WeeklyOfferListView
+                    WeeklyOfferListView,
+                    SinglePropertyPriceCreateView
 
                     
 
@@ -42,6 +43,7 @@ urlpatterns = [
     path('propertyimages/create/', PropertyImageCreateView.as_view(), name='propertyimages-create'),
     path('policies/create/', PolicyCreateView.as_view(), name='policies-create'),
     path('cancellation-policy/create/', CancellationPolicyCreateView.as_view(), name='cancellation-policy-create'),
+    path('single-property-price/create/', SinglePropertyPriceCreateView.as_view(), name='single-property-price-create'),
     
 
     ##############################PropertyUpdate#########################################
