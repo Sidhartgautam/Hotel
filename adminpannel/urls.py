@@ -27,11 +27,6 @@ from .views import (PropertyCreateView,
                     WeeklyOfferCreateView,
                     WeeklyOfferListView,
                     SinglePropertyPriceCreateView
-
-                    
-
-
-
 )
 
 urlpatterns = [

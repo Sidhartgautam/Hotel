@@ -294,6 +294,7 @@ class SingleUnitPrice(models.Model):
     base_price_per_night = models.DecimalField(max_digits=10, decimal_places=2)
     seasonal_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     discount_percentage = models.FloatField(default=0)
+    currency=models.ForeignKey(Currency, on_delete=models.CASCADE,blank=True, null=True)
 
     def get_effective_price(self):
         price = self.seasonal_price if self.seasonal_price else self.base_price_per_night

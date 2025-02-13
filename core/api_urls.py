@@ -21,5 +21,7 @@ urlpatterns = [
     path('faq/', include('faq.urls')), 
     path('offers/',include('offers.urls')),
     path('adminpannel/',include('adminpannel.urls')),
+    path('meta/',include('meta.urls')),
+    path('newsletter/',include('newsletter.urls'))
     
 ]

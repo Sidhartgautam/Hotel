@@ -265,7 +265,9 @@ class RoomType(models.Model):
     )
     room_amenities = models.OneToOneField(
         RoomAmenities, 
-        on_delete=models.CASCADE, 
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="single_room_amenities"
     )
 
@@ -405,9 +407,6 @@ class Price(models.Model):
         return round(price, 2)
 
     def is_active(self):
-        """
-        Check if the price is active for seasonal pricing.
-        """
         today = date.today()
         if self.is_seasonal:
             return self.start_date <= today <= self.end_date

@@ -51,6 +51,7 @@ class RoomSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoomType
         fields = [
+            'id',
             'room_type_name', 
             'available_rooms', 
             'price_per_night', 

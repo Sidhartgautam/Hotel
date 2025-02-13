@@ -262,4 +262,54 @@ class PropertyAmenitiesListView(generics.ListAPIView):
             message="Property amenities retrieved successfully.",
             data=serializer.data
         ).send(code=status.HTTP_200_OK)
+
+# class TrendingDestinationsView(generics.GenericAPIView):
+#     def get(self, request, *args, **kwargs):
+#         country_code = request.country_code  # Get country code from middleware
+
+#         # Filter cities that belong to the requested country
+#         cities = City.objects.annotate(
+#             property_count=Count('properties')
+#         ).filter(property_count__gt=0)
+
+#         if country_code:
+#             cities = cities.filter(country__country_code=country_code)  # Apply country filter
+
+#         cities = cities.order_by('-property_count')[:6]  # Limit to top 6
+
+#         serializer = TrendingDestinationSerializer(cities, many=True)
+#         return PrepareResponse(
+#             success=True,
+#             message="Trending destinations retrieved successfully",
+#             data=serializer.data
+#         ).send(200)
+# class PropertyByPropertyTypeView(generics.ListAPIView):
+#     serializer_class = PropertyByCategorySerializer
+
+#     def get_queryset(self):
+#         property_type_id = self.kwargs.get('property_category_id')
+#         country_code = self.request.country_code  # Get country code from middleware
+
+#         queryset = PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
+
+#         if country_code:
+#             queryset = queryset.filter(properties__country__country_code=country_code)
+
+#         return queryset.distinct()
+
+#     def get(self, request, *args, **kwargs):
+#         queryset = self.get_queryset().first()
+#         if not queryset:
+#             return PrepareResponse(
+#                 success=False,
+#                 message="Category not found or no properties available in this country.",
+#                 data=[]
+#             ).send(404)
+
+#         serializer = self.get_serializer(queryset)
+#         return PrepareResponse(
+#             success=True,
+#             message="Properties by property type retrieved successfully",
+#             data=serializer.data
+#         ).send(200)
         

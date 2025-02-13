@@ -7,6 +7,8 @@ from rooms.serializers import RoomTypeSerializer
 from country.models import City
 from rooms.models import Price
 from django.db.models import Avg, Count
+from offers.models import WeeklyOffer
+from datetime import date
 
 class PropertyCategorySerialzier(serializers.ModelSerializer):
     image=serializers.SerializerMethodField()
@@ -34,13 +36,16 @@ class PropertySearchSerializer(serializers.ModelSerializer):
     city_name = serializers.SerializerMethodField()
     images = PropertyImageSerializer(many=True, read_only=True)
     free_cancellation = serializers.SerializerMethodField()
+    best_price = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
         fields = [
             'id', 'property_name', 'short_description', 'city_name', 'rooms',
-            'rating', 'review_count', 'images','slug','free_cancellation'
+            'rating', 'review_count', 'images','slug','free_cancellation','best_price'
         ]
+
+        
 
     def get_rating(self, obj):
         avg_rating = PropertyReview.objects.filter(property_reviewed=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
@@ -84,6 +89,48 @@ class PropertySearchSerializer(serializers.ModelSerializer):
                 return "Free cancellation available"
         except AttributeError:
             return None
+        return None
+    
+    def get_best_price(self, obj):
+        check_in = self.context.get('check_in')
+        check_out = self.context.get('check_out')
+        max_guests = self.context.get('max_guests')
+        rooms_requested = self.context.get('rooms_requested', 1)
+        room_query = RoomType.objects.filter(
+            property=obj,
+            no_of_available_rooms__gte=rooms_requested,
+            max_no_of_guests__gte=max_guests
+        )
+
+        if check_in and check_out:
+            room_query = room_query.exclude(
+                bookings__check_in__lt=check_out,
+                bookings__check_out__gt=check_in
+            )
+        available_rooms = room_query
+        if available_rooms.exists():
+            prices = []
+            for room in available_rooms:
+                base_price = room.prices.first() 
+                if base_price:
+                    final_price = base_price.calculate_final_price(num_guests=max_guests)
+                    if base_price.is_active():
+                        if base_price.is_seasonal:
+                            seasonal_discount = base_price.discount_percentage
+                            final_price -= (final_price * (seasonal_discount / 100))
+                    weekly_offer = WeeklyOffer.objects.filter(
+                        property=obj,
+                        start_date__lte=date.today(),
+                        end_date__gte=date.today()
+                    ).first()
+
+                    if weekly_offer and weekly_offer.is_active():
+                        offer_discount = weekly_offer.discount_percentage
+                        final_price -= (final_price * (offer_discount / 100))
+
+                    prices.append(final_price)
+            if prices:
+                return min(prices)
         return None
     
 
@@ -140,14 +187,20 @@ class PropertySerializer(serializers.ModelSerializer):
     
 class PropertyByCategorySerializer(serializers.ModelSerializer):
     properties = serializers.SerializerMethodField()
+    image=serializers.SerializerMethodField()
 
     class Meta:
         model = PropertyCategory
-        fields = ['id', 'category_name', 'description', 'properties']
+        fields = ['id', 'category_name', 'description', 'properties', 'image']
 
     def get_properties(self, obj):
         properties = obj.properties.all()
         return PropertySerializer(properties, many=True).data
+    def get_image(self, obj):
+        if obj.image:
+            return obj.image.url
+        else:
+            None
 
 class CancellationPolicySerializer(serializers.ModelSerializer):
     class Meta:

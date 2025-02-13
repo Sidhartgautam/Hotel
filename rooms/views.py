@@ -10,11 +10,11 @@ class PropertyRoomListView(generics.ListAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        hotel_slug = self.kwargs.get('hotel_slug')
+        property_slug = self.kwargs.get('property_slug')
 
         # Fetch the property using the slug
         try:
-            property_instance = Property.objects.get(slug=hotel_slug)
+            property_instance = Property.objects.get(slug=property_slug)
         except Property.DoesNotExist:
             return RoomType.objects.none()
 
