@@ -92,6 +92,10 @@ class PropertySearchSerializer(serializers.ModelSerializer):
         return None
     
     def get_best_price(self, obj):
+        if obj.is_single_unit:
+            if hasattr(obj, 'single_unit_price') and obj.single_unit_price:
+                return obj.single_unit_price.get_effective_price()
+            return None
         check_in = self.context.get('check_in')
         check_out = self.context.get('check_out')
         max_guests = self.context.get('max_guests')
@@ -249,6 +253,8 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
     rating = serializers.SerializerMethodField()
     review_count = serializers.SerializerMethodField()
     city_name=serializers.SerializerMethodField()
+    single_unit_price = serializers.SerializerMethodField()
+
     
 
     class Meta:
@@ -269,6 +275,8 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
             'review_count',
             'rating',
             'slug',
+            'single_unit_price',
+            'is_single_unit'
         ]
 
     def get_facilities(self, obj):
@@ -283,6 +291,21 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
         return PropertyReview.objects.filter(property_reviewed=obj).count()
     def get_city_name(self, obj):
         return obj.city.city_name
+    def get_single_unit_price(self, obj):
+        if obj.is_single_unit:
+            if hasattr(obj, 'single_unit_price') and obj.single_unit_price:
+                return {
+                    "base_price_per_night": obj.single_unit_price.base_price_per_night,
+                    "seasonal_price": obj.single_unit_price.seasonal_price,
+                    "discount_percentage": obj.single_unit_price.discount_percentage,
+                    "currency": obj.single_unit_price.currency.code if obj.single_unit_price.currency else None,
+                    "effective_price": obj.single_unit_price.get_effective_price()
+                }
+            else:
+                raise serializers.ValidationError(
+                    {"single_unit_price": "Single unit property must have a price set."}
+                )
+        return None
     
 class PolicySerializer(serializers.ModelSerializer):
     class Meta:
