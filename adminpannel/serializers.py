@@ -9,7 +9,7 @@ class PropertySerializer(serializers.ModelSerializer):
         model = Property
         fields = [
             'id', 'property_name', 'address', 'description', 'star_rating_property',
-            'country', 'currency', 'city', 'state', 'lng', 'lat', 'user', 'category', 'language'
+            'country', 'currency', 'city', 'state', 'lng', 'lat', 'user', 'category', 'language','is_single_unit'
         ]
         read_only_fields = ['id']
     def update(self, instance, validated_data):
@@ -26,6 +26,7 @@ class PropertySerializer(serializers.ModelSerializer):
         instance.user = validated_data.get('user', instance.user)
         instance.category = validated_data.get('category', instance.category)
         instance.language = validated_data.get('language', instance.language)
+        instance.is_single_unit = validated_data.get('is_single_unit', instance.is_single_unit)
         instance.save()
         return instance
 

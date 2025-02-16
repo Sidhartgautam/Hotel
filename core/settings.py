@@ -65,7 +65,8 @@ INSTALLED_APPS = [
     'offers',
     'adminpannel',
     'meta',
-    'newsletter'
+    'newsletter',
+    'payment'
     
 ]
 

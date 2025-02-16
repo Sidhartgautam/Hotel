@@ -1,0 +1,17 @@
+Dear {{ first_name }} {{ last_name }},
+
+Thank you for booking with us! Here are your booking details:
+
+Property: {{ property_name }}
+Room: {{ room_name }}
+Check-in: {{ check_in }}
+Check-out: {{ check_out }}
+Guests: {{ num_guests }}
+Total Price: {{ total_price }}
+Payment Method: {{ payment_method }}
+Payment Status: {{ payment_status }}
+
+We look forward to hosting you!
+
+Best regards,  
+{{ property_name }}

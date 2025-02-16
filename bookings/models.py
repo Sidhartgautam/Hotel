@@ -67,4 +67,4 @@ class Booking(models.Model):
             )
         ]
     def __str__(self):
-        return f"Booking for {self.room.room_name} ({self.check_in} to {self.check_out})"
+        return f"Booking for {self.room.room_name} ({self.check_in} to {self.check_out}) for {self.property.property_name}"

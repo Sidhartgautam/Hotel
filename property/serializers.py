@@ -255,8 +255,6 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
     city_name=serializers.SerializerMethodField()
     single_unit_price = serializers.SerializerMethodField()
 
-    
-
     class Meta:
         model = Property
         fields = [

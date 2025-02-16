@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Booking
 from datetime import date
 from core.utils.booking import calculate_booking_price
-
+from country.models import Country
 from rest_framework import serializers
 from datetime import date
 from core.utils.booking import calculate_booking_price
@@ -30,12 +30,17 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         read_only=True, 
         help_text="Total price for the booking, including offers and discounts."
     )
+    country_code = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="Country code instead of country ID."
+    )
 
     class Meta:
         model = Booking
         fields = [
             'property', 'room', 'check_in', 'check_out', 'num_guests',
-            'first_name', 'last_name','country', 'customer_email', 'payment_method', 'payment_method_id', 
+            'first_name', 'last_name','country_code', 'customer_email', 'payment_method', 'payment_method_id', 
             'pin', 'total_price'
         ]
 
@@ -48,6 +53,14 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         payment_method = data.get('payment_method')
         property_obj = data.get('property')
         room = data.get('room')
+        country_code = data.pop('country_code', None)  
+        
+        if country_code:
+            try:
+                country = Country.objects.get(country_code=country_code)
+                data['country'] = country 
+            except Country.DoesNotExist:
+                raise serializers.ValidationError({"country_code": "Invalid country code."})
 
         ########validationforsingleunit
         if not room and not property_obj.is_single_unit:

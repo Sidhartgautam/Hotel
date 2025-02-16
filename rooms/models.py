@@ -289,7 +289,7 @@ class RoomBed(models.Model):
         unique_together = ('room_type', 'bed_type')
 
     def __str__(self):
-        return f"{self.quantity} x {self.bed_type} in {self.room_type}"
+        return f"{self.quantity} x {self.bed_type} in {self.room_type}for {self.room_type.property.property_name}"
 
 
 class Price(models.Model):

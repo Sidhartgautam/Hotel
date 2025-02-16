@@ -1,0 +1,17 @@
+Dear {{ hotel_owner_name }},
+
+A new booking has been made at your property:
+
+Customer: {{ first_name }} {{ last_name }}
+Email: {{ user_email }}
+Check-in: {{ check_in }}
+Check-out: {{ check_out }}
+Guests: {{ num_guests }}
+Total Price: {{ total_price }}
+Payment Method: {{ payment_method }}
+Payment Status: {{ payment_status }}
+
+Please prepare for their arrival.
+
+Best regards,  
+Booking System

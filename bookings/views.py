@@ -10,6 +10,7 @@ from .serializers import BookingCreateSerializer,BookingListSerializer
 from core.utils.booking import calculate_booking_price 
 from core.utils.cancellation import cancel_booking
 from core.utils.moredealstoken import get_moredeals_token
+from core.utils.booking_email import send_booking_confirmation_email
 import stripe
 import requests
 from django.conf import settings
@@ -37,20 +38,23 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 
 #         try:
 #             with transaction.atomic():
-#                 booking = serializer.save(user=request.user, total_price=total_price)
 #                 payment_status, message = self.process_payment(
 #                     request=request,
 #                     payment_method=validated_data.get('payment_method'),
 #                     amount=total_price,
 #                     user=request.user,
-#                     booking=booking
+                    
 #                 )
-#                 booking.payment_status = payment_status.lower()
-#                 booking.save()
+#                 if payment_status.lower() == 'paid':
+#                     booking = serializer.save(user=request.user, total_price=total_price, payment_status='paid')
+#                 elif payment_status.lower() == 'unpaid' and validated_data.get('payment_method') == 'cod':
+#                     booking = serializer.save(user=request.user, total_price=total_price, payment_status='unpaid')
+#                 else:
+#                     raise ValidationError({"payment_errors": message})
 
 #                 return PrepareResponse(
 #                     success=True,
-#                     message=message,
+#                     message="Booking created successfully.",
 #                     data={
 #                         "booking_id": booking.id,
 #                         "total_price": booking.total_price,
@@ -58,18 +62,17 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 #                         "payment_method": booking.payment_method,
 #                     }
 #                 ).send(status.HTTP_201_CREATED)
+
 #         except ValidationError as e:
 #             return PrepareResponse(
 #                 success=False,
-#                 message="Booking creation failed",
+#                 message="Payment processing failed.",
 #                 errors={"payment_errors": str(e)}
 #             ).send(status.HTTP_400_BAD_REQUEST)
 
-#     def process_payment(self, request, payment_method, amount, user, booking):
+#     def process_payment(self, request, payment_method, amount, user):
 #         if payment_method == 'cod':
-#             booking.status = 'pending'
-#             booking.save()
-#             return 'Unpaid', "Booking placed with Cash on Arrival."
+#             return 'unpaid', "Booking placed with Cash on Arrival."
 #         elif payment_method == 'stripe':
 #             return self.process_stripe_payment(request, amount)
 #         elif payment_method == 'moredeals':
@@ -82,7 +85,7 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 #             payment_method_id = request.data.get('payment_method_id')
 #             if not payment_method_id:
 #                 raise ValidationError("Payment method ID not provided.")
-            
+
 #             payment_intent = stripe.PaymentIntent.create(
 #                 amount=int(amount * 100),
 #                 currency="usd",
@@ -90,37 +93,48 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 #                 confirmation_method="manual",
 #                 confirm=True,
 #             )
-#             if payment_intent['status'] != 'succeeded':
+
+#             if payment_intent['status'] == 'succeeded':
+#                 return 'paid', "Stripe payment successful."
+#             else:
 #                 raise ValidationError(f"Payment failed with status: {payment_intent['status']}")
-#             return 'Paid', "Stripe payment successful."
+
 #         except stripe.error.CardError as e:
 #             raise ValidationError(str(e))
 
 #     def process_moredeals_payment(self, request, amount):
-#         print(request.data)
+#         """
+#         Process MoreDeals payment.
+#         """
 #         pin = request.data.get('pin')
 #         if not pin:
 #             raise ValidationError("PIN not provided for MoreDeals payment.")
+#         property_id = request.data.get('property')
+#         property_obj = Property.objects.get(id=property_id)
+#         currency_code = property_obj.currency.currency_code
+#         recipient_username = property_obj.user.username
 
 #         access_token = get_moredeals_token(request)
 #         response = requests.post(
-#             "http://192.168.1.72:8000/api/payments/payment-through-balance/",
-#             json={'amount': float(amount), 'pin': pin, 'platform': 'MoreLiving'},
-#             headers={'Authorization': f"Bearer {access_token}"}
+#             "https://moretrek.com/api/payments/payment-through-balance/",
+#             json={'amount': float(amount), 'pin': pin, 'platform': 'moreliving', 'currency_code': currency_code,'recipient': recipient_username},
+#             headers={'Authorization': f"{access_token}"}
 #         )
 #         print(response.status_code)
-
-#         if response.status_code == 200:
-#             return 'Paid', "MoreDeals payment successful."
+#         print(response.json())
+#         if response.status_code == 200 and response.json().get('success', False):
+#             return 'paid', "MoreDeals payment successful."
 #         else:
 #             errors = response.json().get('errors', 'Unknown error')
-#             print("MoreDeals payment failed:", errors)
-#             return 'Unpaid', f"MoreDeals payment failed: {errors}"
+#             raise ValidationError(f"MoreDeals payment failed: {errors}")
 
 class BookingCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
+        """
+        Create a new booking and confirm payment.
+        """
         data = request.data
         serializer = BookingCreateSerializer(data=data, context={'request': request})
 
@@ -136,18 +150,24 @@ class BookingCreateAPIView(APIView):
 
         try:
             with transaction.atomic():
+                booking = serializer.save(user=request.user, total_price=total_price, payment_status='pending')
                 payment_status, message = self.process_payment(
                     request=request,
                     payment_method=validated_data.get('payment_method'),
+                    payment_intent_id=validated_data.get('payment_method_id'),
                     amount=total_price,
-                    user=request.user
+                    booking=booking
                 )
+
                 if payment_status.lower() == 'paid':
-                    booking = serializer.save(user=request.user, total_price=total_price, payment_status='paid')
+                    booking.payment_status = 'paid'
                 elif payment_status.lower() == 'unpaid' and validated_data.get('payment_method') == 'cod':
-                    booking = serializer.save(user=request.user, total_price=total_price, payment_status='unpaid')
+                    booking.payment_status = 'unpaid'
                 else:
                     raise ValidationError({"payment_errors": message})
+
+                booking.save()
+                send_booking_confirmation_email(booking)
 
                 return PrepareResponse(
                     success=True,
@@ -167,29 +187,28 @@ class BookingCreateAPIView(APIView):
                 errors={"payment_errors": str(e)}
             ).send(status.HTTP_400_BAD_REQUEST)
 
-    def process_payment(self, request, payment_method, amount, user):
+    def process_payment(self, request, payment_method, payment_intent_id, amount, booking):
+        """Handles different payment methods (Stripe, MoreDeals, COD)."""
         if payment_method == 'cod':
             return 'unpaid', "Booking placed with Cash on Arrival."
+
         elif payment_method == 'stripe':
-            return self.process_stripe_payment(request, amount)
+            return self.confirm_stripe_payment(payment_intent_id)
+
         elif payment_method == 'moredeals':
-            return self.process_moredeals_payment(request, amount)
+            return self.process_moredeals_payment(request, amount, booking)
+
         else:
             raise ValidationError("Unsupported payment method.")
 
-    def process_stripe_payment(self, request, amount):
+    def confirm_stripe_payment(self, payment_intent_id):
+        """Confirms the Stripe PaymentIntent."""
         try:
-            payment_method_id = request.data.get('payment_method_id')
-            if not payment_method_id:
-                raise ValidationError("Payment method ID not provided.")
+            if not payment_intent_id:
+                raise ValidationError("PaymentIntent ID not provided.")
 
-            payment_intent = stripe.PaymentIntent.create(
-                amount=int(amount * 100),
-                currency="usd",
-                payment_method=payment_method_id,
-                confirmation_method="manual",
-                confirm=True,
-            )
+            # Confirm the PaymentIntent
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
 
             if payment_intent['status'] == 'succeeded':
                 return 'paid', "Stripe payment successful."
@@ -199,13 +218,12 @@ class BookingCreateAPIView(APIView):
         except stripe.error.CardError as e:
             raise ValidationError(str(e))
 
-    def process_moredeals_payment(self, request, amount):
-        """
-        Process MoreDeals payment.
-        """
+    def process_moredeals_payment(self, request, amount, booking):
+        """Processes MoreDeals payment."""
         pin = request.data.get('pin')
         if not pin:
             raise ValidationError("PIN not provided for MoreDeals payment.")
+
         property_id = request.data.get('property')
         property_obj = Property.objects.get(id=property_id)
         currency_code = property_obj.currency.currency_code
@@ -213,12 +231,11 @@ class BookingCreateAPIView(APIView):
 
         access_token = get_moredeals_token(request)
         response = requests.post(
-            "http://192.168.1.72:8000/api/payments/payment-through-balance/",
-            json={'amount': float(amount), 'pin': pin, 'platform': 'moreliving', 'currency_code': currency_code,'recipient': recipient_username},
+            "https://moretrek.com/api/payments/payment-through-balance/",
+            json={'amount': float(amount), 'pin': pin, 'platform': 'moreliving', 'currency_code': currency_code, 'recipient': recipient_username},
             headers={'Authorization': f"{access_token}"}
         )
-        print(response.status_code)
-        print(response.json())
+
         if response.status_code == 200 and response.json().get('success', False):
             return 'paid', "MoreDeals payment successful."
         else:

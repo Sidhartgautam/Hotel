@@ -1,11 +1,11 @@
 
 from rest_framework import generics
-from django.db.models import Count
+from django.db.models import Count,Q,Avg
 from .models import City
 from rest_framework.views import APIView  
 from rest_framework.response import Response 
 from rest_framework import status  
-from datetime import date  
+from datetime import date 
 from .models import Property,PropertyCategory,CancellationPolicy,Policy,PropertyAmenities
 from .serializers import CancellationPolicySerializer,PolicySerializer
 
@@ -26,7 +26,10 @@ class PropertySearchView(APIView):
         amenities = request.query_params.getlist('amenities', [])
         property_type = request.query_params.get('property_type', None)
         pets_allowed = request.query_params.get('pets_allowed', None)
-        free_cancellation = request.query_params.get('free_cancellation', None)  
+        free_cancellation = request.query_params.get('free_cancellation', None)
+        room_amenities = request.query_params.getlist('room_amenities', [])
+        bed_type = request.query_params.get('bed_type', None)
+        guest_rating = request.query_params.get('guest_rating', None)
 
         if not location:
             return Response(
@@ -69,8 +72,47 @@ class PropertySearchView(APIView):
 
         if free_cancellation:
             properties = properties.filter(cancellation_policy__cancellation_fee_type='none')
+        
+        if room_amenities:
+            filtered_properties = []
+            for property in properties:
+                for room in property.room_type.all():
+                    if room.room_amenities:
+                        has_all_amenities = all(
+                            getattr(room.room_amenities, amenity.lower().replace(" ", "_"), False) 
+                            for amenity in room_amenities
+                        )
+                        if has_all_amenities:
+                            filtered_properties.append(property)
+                            break 
 
-        # Filter properties with available rooms if dates are provided
+            properties = filtered_properties
+
+        if bed_type:
+            properties = properties.filter(room_type__room_beds__bed_type__bed_type__iexact=bed_type.strip()).distinct()
+        
+        if guest_rating:
+            rating_threshold = None
+            if guest_rating == "9+":
+                rating_threshold = 9.0
+            elif guest_rating == "8+":
+                rating_threshold = 8.0
+            elif guest_rating == "7+":
+                rating_threshold = 7.0
+            elif guest_rating == "6+":
+                rating_threshold = 6.0
+
+            if rating_threshold:
+                properties = properties.annotate(avg_guest_review=Avg(
+                    ('guest_reviews__staff' +
+                     'guest_reviews__facilities' +
+                     'guest_reviews__cleanliness' +
+                     'guest_reviews__comfort' +
+                     'guest_reviews__value_for_money' +
+                     'guest_reviews__location' +
+                     'guest_reviews__free_wifi') / 7
+                )).filter(avg_guest_review__gte=rating_threshold)
+
         if check_in and check_out:
             filtered_properties = []
             for property in properties:
