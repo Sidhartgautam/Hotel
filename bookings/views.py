@@ -132,9 +132,6 @@ class BookingCreateAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        """
-        Create a new booking and confirm payment.
-        """
         data = request.data
         serializer = BookingCreateSerializer(data=data, context={'request': request})
 
@@ -224,8 +221,10 @@ class BookingCreateAPIView(APIView):
         if not pin:
             raise ValidationError("PIN not provided for MoreDeals payment.")
 
-        property_id = request.data.get('property')
-        property_obj = Property.objects.get(id=property_id)
+        property_obj = booking.property  
+
+        if not property_obj:
+            raise ValidationError("Property not found for this booking.")
         currency_code = property_obj.currency.currency_code
         recipient_username = property_obj.user.username
 

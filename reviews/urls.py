@@ -4,7 +4,8 @@ from .views import (UserPropertyReviewsListView,
                      PropertyReviewCreateView, 
                      PropertyReviewListView,
                      GuestReviewCreateView,
-                     GuestReviewListView
+                     GuestReviewListView,
+                     CreateCombinedReviewView
 )
 
 urlpatterns = [
@@ -14,4 +15,5 @@ urlpatterns = [
     path('guests/reviews/create/', GuestReviewCreateView.as_view(), name='guest-review-create'),
     path('reviews/property/', UserPropertyReviewsListView.as_view(), name='user-property-reviews'),
     path('reviews/facilities/', UserGuestReviewsListView.as_view(), name='user-guest-reviews'),  
+    path('combined/reviews/create/', CreateCombinedReviewView.as_view(), name='create-combined-review'),
 ]

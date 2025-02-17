@@ -1,7 +1,10 @@
 from rest_framework import generics, permissions, status
+from django.db.models import Avg
+from django.db import transaction
 from rest_framework.exceptions import PermissionDenied
 from .models import PropertyReview, GuestReview
-from .serializers import PropertyReviewSerializer, GuestReviewSerializer
+from property.models import Property
+from .serializers import PropertyReviewSerializer, GuestReviewSerializer,GuestReviewAggregateSerializer
 from core.utils.response import PrepareResponse
 from core.utils.pagination import CustomPageNumberPagination
 from bookings.models import Booking
@@ -12,21 +15,30 @@ class PropertyReviewCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        # Check if the user has a valid booking and has checked in
-        property_id = request.data.get('property')
-        booking_exists = Booking.objects.filter(
-            user=request.user,
-            property_id=property_id,
-            status='checked_in'
-        ).exists()
+        property_slug = request.data.get('property_slug')
 
-        if not booking_exists:
-            raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+        # ✅ Validate and fetch property instance
+        try:
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PrepareResponse(
+                success=False,
+                message="Invalid property slug.",
+                errors={"property_slug": "Property with this slug does not exist."}
+            ).send(status.HTTP_400_BAD_REQUEST)
+        # booking_exists = Booking.objects.filter(
+        #     user=request.user,
+        #     property=property_instance,
+        #     guest_status='checked_in'
+        # ).exists()
 
-        # Proceed to create the review
+        # if not booking_exists:
+        #     raise PermissionDenied("You are not authorized to review this property. Please check in first.")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        serializer.validated_data['property_reviewed'] = property_instance 
         self.perform_create(serializer)
+
         return PrepareResponse(
             success=True,
             message="Property review created successfully",
@@ -79,41 +91,73 @@ class PropertyReviewListView(generics.ListAPIView):
     
 
 class GuestReviewListView(generics.ListAPIView):
-    serializer_class = GuestReviewSerializer
-    permission_classes = [permissions.AllowAny]  # Use `IsAuthenticated` if necessary
-    pagination_class = CustomPageNumberPagination
+    serializer_class = GuestReviewAggregateSerializer
+    permission_classes = [permissions.AllowAny]
 
     def get_queryset(self):
-        property_slug = self.kwargs.get('property_slug')
-
-        # Filter by the property with the given slug
-        try:
-            from property.models import Property
-            property_instance = Property.objects.get(slug=property_slug)
-        except Property.DoesNotExist:
-            return GuestReview.objects.none()
-
-        return GuestReview.objects.filter(property=property_instance)
+        return GuestReview.objects.none()  # We return aggregated data manually
 
     def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        page = self.paginate_queryset(queryset)
+        property_slug = self.kwargs.get('property_slug')
 
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            paginated_response = self.get_paginated_response(serializer.data)
+        # ✅ Fetch property instance
+        try:
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PrepareResponse(
+                success=False,
+                message="Property not found.",
+                errors={"property_slug": "Invalid property slug."}
+            ).send(status.HTTP_400_BAD_REQUEST)
+
+        # ✅ Get all reviews for the property
+        reviews = GuestReview.objects.filter(property=property_instance)
+
+        if not reviews.exists():
             return PrepareResponse(
                 success=True,
-                message="Guest review list retrieved successfully",
-                data=paginated_response
-            ).send(code=status.HTTP_200_OK)
+                message="No reviews found for this property.",
+                data={
+                    "property_slug": property_slug,
+                    "average_rating": None,
+                    "category_averages": {}
+                }
+            ).send(status.HTTP_200_OK)
 
-        serializer = self.get_serializer(queryset, many=True)
+        # ✅ Compute all category averages in one query
+        aggregation_results = reviews.aggregate(
+            staff_avg=Avg("staff"),
+            facilities_avg=Avg("facilities"),
+            cleanliness_avg=Avg("cleanliness"),
+            comfort_avg=Avg("comfort"),
+            value_for_money_avg=Avg("value_for_money"),
+            location_avg=Avg("location"),
+            free_wifi_avg=Avg("free_wifi"),
+        )
+
+        category_averages = {
+            "staff": round(aggregation_results["staff_avg"] or 0, 2),
+            "facilities": round(aggregation_results["facilities_avg"] or 0, 2),
+            "cleanliness": round(aggregation_results["cleanliness_avg"] or 0, 2),
+            "comfort": round(aggregation_results["comfort_avg"] or 0, 2),
+            "value_for_money": round(aggregation_results["value_for_money_avg"] or 0, 2),
+            "location": round(aggregation_results["location_avg"] or 0, 2),
+            "free_wifi": round(aggregation_results["free_wifi_avg"] or 0, 2),
+        }
+
+        # ✅ Compute overall average
+        overall_average = sum(category_averages.values()) / len(category_averages)
+
+        # ✅ Return response
         return PrepareResponse(
             success=True,
-            message="Guest review list retrieved successfully",
-            data=serializer.data
-        ).send(code=status.HTTP_200_OK)
+            message="Guest review averages retrieved successfully.",
+            data={
+                "property_slug": property_slug,
+                "average_rating": round(overall_average, 2),
+                "category_averages": category_averages
+            }
+        ).send(status.HTTP_200_OK)
 
     
 class GuestReviewCreateView(generics.CreateAPIView):
@@ -122,18 +166,36 @@ class GuestReviewCreateView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
-        property_id = request.data.get('property')
-        booking_exists = Booking.objects.filter(
-            user=request.user,
-            property_id=property_id,
-            status='checked_in'
-        ).exists()
+        property_slug = request.data.get('property_slug')
+        user = request.user
+        try:
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PrepareResponse(
+                success=False,
+                message="Invalid property slug.",
+                errors={"property_slug": "Property with this slug does not exist."}
+            ).send(status.HTTP_400_BAD_REQUEST)
+        # booking_exists = Booking.objects.filter(
+        #     user=request.user,
+        #     property=property_instance,
+        #     guest_status='checked_in'
+        # ).exists()
 
-        if not booking_exists:
-            raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+        # if not booking_exists:
+        #     raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+        if GuestReview.objects.filter(user=user, property=property_instance).exists():
+            return PrepareResponse(
+                success=False,
+                message="You have already reviewed this property.",
+                errors={"property_slug": "A user can review a property only once."}
+            ).send(status.HTTP_400_BAD_REQUEST)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        serializer.validated_data['property'] = property_instance 
+        serializer.validated_data['user'] = user 
         self.perform_create(serializer)
+
         return PrepareResponse(
             success=True,
             message="Guest review created successfully",
@@ -195,4 +257,71 @@ class UserGuestReviewsListView(generics.ListAPIView):
             message="User guest reviews retrieved successfully",
             data=serializer.data
         ).send()
+    
+
+#######################Combined####################################
+class CreateCombinedReviewView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        property_slug = request.data.get("property_slug")
+        review_data = request.data.get("property_review")  # Property review details
+        guest_review_data = request.data.get("guest_review")  # Guest review details
+
+        # ✅ Validate Property Existence
+        try:
+            property_instance = Property.objects.get(slug=property_slug)
+        except Property.DoesNotExist:
+            return PrepareResponse(
+                success=False,
+                message="Property not found.",
+                errors={"property_slug": "Invalid property slug."}
+            ).send(status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        response_data = {}
+
+        with transaction.atomic():
+            if review_data:
+                # booking_exists = Booking.objects.filter(
+                #     user=user,
+                #     property=property_instance,
+                #     guest_status="checked_in"
+                # ).exists()
+
+                # if not booking_exists:
+                #     raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+
+                review_data["property_slug"] = property_slug
+                review_serializer = PropertyReviewSerializer(data=review_data, context={"request": request})
+                review_serializer.is_valid(raise_exception=True)
+                review_serializer.validated_data["property_reviewed"] = property_instance
+                review_serializer.save()
+
+                response_data["property_review"] = review_serializer.data
+
+            # ✅ Handle Guest Review (if provided)
+            if guest_review_data:
+                if GuestReview.objects.filter(user=user, property=property_instance).exists():
+                    return PrepareResponse(
+                        success=False,
+                        message="You have already reviewed this property as a guest.",
+                        errors={"property_slug": "A user can review a property only once."}
+                    ).send(status.HTTP_400_BAD_REQUEST)
+
+                guest_review_data["property_slug"] = property_slug
+                guest_review_serializer = GuestReviewSerializer(data=guest_review_data, context={"request": request})
+                guest_review_serializer.is_valid(raise_exception=True)
+                guest_review_serializer.validated_data["property"] = property_instance
+                guest_review_serializer.validated_data["user"] = user
+                guest_review_serializer.save()
+
+                response_data["guest_review"] = guest_review_serializer.data
+
+        # ✅ Response
+        return PrepareResponse(
+            success=True,
+            message="Reviews submitted successfully.",
+            data=response_data
+        ).send(status.HTTP_201_CREATED)
 

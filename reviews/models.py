@@ -24,6 +24,7 @@ class PropertyReview(models.Model):
 
 class GuestReview(models.Model):
     id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="guest_reviews",null=True,blank=True)
     property = models.ForeignKey(Property, related_name='guest_reviews', on_delete=models.CASCADE)
     staff = models.FloatField()
     facilities = models.FloatField()
@@ -56,6 +57,7 @@ class GuestReview(models.Model):
         # Call the clean method to enforce validation before saving
         self.clean()
         super().save(*args, **kwargs)
-
+    def __str__(self):
+        return f"Guest Review for {self.property}"
 
 

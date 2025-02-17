@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Booking
+from property.models import Property
 from datetime import date
 from core.utils.booking import calculate_booking_price
 from country.models import Country
@@ -9,6 +10,9 @@ from core.utils.booking import calculate_booking_price
 from .models import Booking
 
 class BookingCreateSerializer(serializers.ModelSerializer):
+    property_slug = serializers.CharField(
+        required=True, help_text="Slug of the property instead of property ID."
+    )
     payment_method = serializers.ChoiceField(
         choices=['cod', 'stripe', 'moredeals'],
         required=True,
@@ -39,21 +43,25 @@ class BookingCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = [
-            'property', 'room', 'check_in', 'check_out', 'num_guests',
+            'property_slug', 'room', 'check_in', 'check_out', 'num_guests',
             'first_name', 'last_name','country_code', 'customer_email', 'payment_method', 'payment_method_id', 
             'pin', 'total_price'
         ]
 
     def validate(self, data):
-        """
-        Validate the booking data and payment details.
-        """
         check_in = data.get('check_in')
         check_out = data.get('check_out')
         payment_method = data.get('payment_method')
         property_obj = data.get('property')
         room = data.get('room')
-        country_code = data.pop('country_code', None)  
+        country_code = data.pop('country_code', None) 
+        property_slug = data.pop('property_slug', None)
+
+        try:
+            property_obj = Property.objects.get(slug=property_slug)
+            data['property'] = property_obj
+        except Property.DoesNotExist:
+            raise serializers.ValidationError({"property_slug": "Invalid property slug."}) 
         
         if country_code:
             try:
