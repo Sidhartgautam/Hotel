@@ -20,13 +20,40 @@ class CountryListView(generics.ListAPIView):
         )
         return response.send(200)
     
+# class CityListView(generics.ListAPIView):
+#     queryset = City.objects.all()
+#     serializer_class = CitySerializer
+
+#     def list(self, request, *args, **kwargs):
+#         queryset = self.get_queryset()
+#         serializer = self.get_serializer(queryset, many=True)
+#         response = PrepareResponse(
+#             success=True,
+#             message="City list retrieved successfully",
+#             data=serializer.data
+#         )
+#         return response.send(200)
 class CityListView(generics.ListAPIView):
-    queryset = City.objects.all()
     serializer_class = CitySerializer
-    # permission_classes = [permissions.IsAdminUser]  # No authentication required
+
+    def get_queryset(self):
+        country_code = self.request.country_code 
+
+        if not country_code:
+            return City.objects.none()  
+
+        return City.objects.filter(country__country_code=country_code) 
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
+
+        if not queryset.exists():  
+            return PrepareResponse(
+                success=True,
+                message="No cities found",
+                data=None  
+            ).send(200)
+
         serializer = self.get_serializer(queryset, many=True)
         response = PrepareResponse(
             success=True,

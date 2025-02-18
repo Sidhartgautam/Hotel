@@ -144,18 +144,18 @@ class PropertySearchView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class TrendingDestinationsView(generics.GenericAPIView):
-    def get(self, request, *args, **kwargs):
-        cities = City.objects.annotate(
-            property_count=Count('properties') 
-        ).filter(property_count__gt=0).order_by('-property_count')[:6] 
+# class TrendingDestinationsView(generics.GenericAPIView):
+#     def get(self, request, *args, **kwargs):
+#         cities = City.objects.annotate(
+#             property_count=Count('properties') 
+#         ).filter(property_count__gt=0).order_by('-property_count')[:6] 
 
-        serializer = TrendingDestinationSerializer(cities, many=True)
-        return PrepareResponse(
-            success=True,
-            message="Trending destinations retrieved successfully",
-            data=serializer.data
-        ).send(200)
+#         serializer = TrendingDestinationSerializer(cities, many=True)
+#         return PrepareResponse(
+#             success=True,
+#             message="Trending destinations retrieved successfully",
+#             data=serializer.data
+#         ).send(200)
     
 class PropertyListView(APIView):
 
@@ -201,28 +201,28 @@ class PropertyCategoryListView(generics.ListAPIView):
             data=serializer.data
         ).send(200)
     
-class PropertyByPropertyTypeView(generics.ListAPIView):
-    serializer_class = PropertyByCategorySerializer
+# class PropertyByPropertyTypeView(generics.ListAPIView):
+#     serializer_class = PropertyByCategorySerializer
 
-    def get_queryset(self):
-        property_type_id = self.kwargs.get('property_category_id')
-        return PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
+#     def get_queryset(self):
+#         property_type_id = self.kwargs.get('property_category_id')
+#         return PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
 
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset().first()
-        if not queryset:
-            return PrepareResponse(
-                success=False,
-                message="Category not found",
-                data=[]
-            ).send(404)
+#     def get(self, request, *args, **kwargs):
+#         queryset = self.get_queryset().first()
+#         if not queryset:
+#             return PrepareResponse(
+#                 success=False,
+#                 message="Category not found",
+#                 data=[]
+#             ).send(404)
 
-        serializer = self.get_serializer(queryset)
-        return PrepareResponse(
-            success=True,
-            message="Properties by property type retrieved successfully",
-            data=serializer.data
-        ).send(200)
+#         serializer = self.get_serializer(queryset)
+#         return PrepareResponse(
+#             success=True,
+#             message="Properties by property type retrieved successfully",
+#             data=serializer.data
+#         ).send(200)
     
 class PropertyCancellationPolicyView(APIView):
 
@@ -305,53 +305,56 @@ class PropertyAmenitiesListView(generics.ListAPIView):
             data=serializer.data
         ).send(code=status.HTTP_200_OK)
 
-# class TrendingDestinationsView(generics.GenericAPIView):
-#     def get(self, request, *args, **kwargs):
-#         country_code = request.country_code  # Get country code from middleware
+class TrendingDestinationsView(generics.GenericAPIView):
+    def get(self, request, *args, **kwargs):
+        country_code = request.country_code 
 
-#         # Filter cities that belong to the requested country
-#         cities = City.objects.annotate(
-#             property_count=Count('properties')
-#         ).filter(property_count__gt=0)
+        if not country_code:
+            return PrepareResponse(
+                success=False,
+                message="Country code is required",
+                errors={"country_code": "Missing country code in request"}
+            ).send(400)
+        cities = City.objects.annotate(
+            property_count=Count('properties')
+        ).filter(property_count__gt=0, country__country_code=country_code)  
 
-#         if country_code:
-#             cities = cities.filter(country__country_code=country_code)  # Apply country filter
+        cities = cities.order_by('-property_count')[:5]  
 
-#         cities = cities.order_by('-property_count')[:6]  # Limit to top 6
+        serializer = TrendingDestinationSerializer(cities, many=True)
+        return PrepareResponse(
+            success=True,
+            message="Trending destinations retrieved successfully",
+            data=serializer.data
+        ).send(200)
+    
+class PropertyByPropertyTypeView(generics.ListAPIView):
+    serializer_class = PropertyByCategorySerializer
 
-#         serializer = TrendingDestinationSerializer(cities, many=True)
-#         return PrepareResponse(
-#             success=True,
-#             message="Trending destinations retrieved successfully",
-#             data=serializer.data
-#         ).send(200)
-# class PropertyByPropertyTypeView(generics.ListAPIView):
-#     serializer_class = PropertyByCategorySerializer
+    def get_queryset(self):
+        property_type_id = self.kwargs.get('property_category_id')
+        country_code = self.request.country_code  
 
-#     def get_queryset(self):
-#         property_type_id = self.kwargs.get('property_category_id')
-#         country_code = self.request.country_code  # Get country code from middleware
+        queryset = PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
 
-#         queryset = PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
+        if country_code:
+            queryset = queryset.filter(properties__country__country_code=country_code)
 
-#         if country_code:
-#             queryset = queryset.filter(properties__country__country_code=country_code)
+        return queryset.distinct()
 
-#         return queryset.distinct()
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset().first()
+        if not queryset:
+            return PrepareResponse(
+                success=False,
+                message="Category not found or no properties available in this country.",
+                data=[]
+            ).send(404)
 
-#     def get(self, request, *args, **kwargs):
-#         queryset = self.get_queryset().first()
-#         if not queryset:
-#             return PrepareResponse(
-#                 success=False,
-#                 message="Category not found or no properties available in this country.",
-#                 data=[]
-#             ).send(404)
-
-#         serializer = self.get_serializer(queryset)
-#         return PrepareResponse(
-#             success=True,
-#             message="Properties by property type retrieved successfully",
-#             data=serializer.data
-#         ).send(200)
+        serializer = self.get_serializer(queryset)
+        return PrepareResponse(
+            success=True,
+            message="Properties by property type retrieved successfully",
+            data=serializer.data
+        ).send(200)
         
