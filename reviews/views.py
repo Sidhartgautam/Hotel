@@ -26,14 +26,14 @@ class PropertyReviewCreateView(generics.CreateAPIView):
                 message="Invalid property slug.",
                 errors={"property_slug": "Property with this slug does not exist."}
             ).send(status.HTTP_400_BAD_REQUEST)
-        # booking_exists = Booking.objects.filter(
-        #     user=request.user,
-        #     property=property_instance,
-        #     guest_status='checked_in'
-        # ).exists()
+        booking_exists = Booking.objects.filter(
+            user=request.user,
+            property=property_instance,
+            guest_status='checked_in'
+        ).exists()
 
-        # if not booking_exists:
-        #     raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+        if not booking_exists:
+            raise PermissionDenied("You are not authorized to review this property. Please check in first.")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.validated_data['property_reviewed'] = property_instance 
@@ -176,14 +176,14 @@ class GuestReviewCreateView(generics.CreateAPIView):
                 message="Invalid property slug.",
                 errors={"property_slug": "Property with this slug does not exist."}
             ).send(status.HTTP_400_BAD_REQUEST)
-        # booking_exists = Booking.objects.filter(
-        #     user=request.user,
-        #     property=property_instance,
-        #     guest_status='checked_in'
-        # ).exists()
+        booking_exists = Booking.objects.filter(
+            user=request.user,
+            property=property_instance,
+            guest_status='checked_in'
+        ).exists()
 
-        # if not booking_exists:
-        #     raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+        if not booking_exists:
+            raise PermissionDenied("You are not authorized to review this property. Please check in first.")
         if GuestReview.objects.filter(user=user, property=property_instance).exists():
             return PrepareResponse(
                 success=False,
@@ -283,14 +283,14 @@ class CreateCombinedReviewView(generics.CreateAPIView):
 
         with transaction.atomic():
             if review_data:
-                # booking_exists = Booking.objects.filter(
-                #     user=user,
-                #     property=property_instance,
-                #     guest_status="checked_in"
-                # ).exists()
+                booking_exists = Booking.objects.filter(
+                    user=user,
+                    property=property_instance,
+                    guest_status="checked_in"
+                ).exists()
 
-                # if not booking_exists:
-                #     raise PermissionDenied("You are not authorized to review this property. Please check in first.")
+                if not booking_exists:
+                    raise PermissionDenied("You are not authorized to review this property. Please check in first.")
 
                 review_data["property_slug"] = property_slug
                 review_serializer = PropertyReviewSerializer(data=review_data, context={"request": request})

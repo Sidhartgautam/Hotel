@@ -290,16 +290,21 @@ class UserBookingListView(generics.ListAPIView):
         queryset = self.get_queryset()
         booking_count = queryset.count()
         page = self.paginate_queryset(queryset)
+
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             paginated_response = self.get_paginated_response(serializer.data)
-            paginated_response.data['booking_count'] = booking_count
+
+            # Ensure paginated_response is a Response object
+            paginated_response_data = paginated_response
+            paginated_response_data['booking_count'] = booking_count
 
             return PrepareResponse(
                 success=True,
                 message="User bookings retrieved successfully",
-                data=paginated_response.data
+                data=paginated_response_data  # Use the modified data
             ).send(code=status.HTTP_200_OK)
+
         serializer = self.get_serializer(queryset, many=True)
         return PrepareResponse(
             success=True,
