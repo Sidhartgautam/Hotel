@@ -17,6 +17,12 @@ class BedType(models.Model):
         ('sofa_bed', 'Sofa Bed'),
         ('bunk_bed', 'Bunk Bed'),
         ('futon', 'Futon'),
+        ('crib', 'Crib'),
+        ('twin_beds', 'Twin Beds'),
+        ('triple_beds', 'Triple Beds'),
+        ('quad_beds', 'Quad Beds'),
+        ('octuple_beds', 'Octuple Beds'),
+        ('full_beds', 'Full Beds'),
     ]
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     bed_type = models.CharField(max_length=50, choices=BED_TYPE_CHOICES, unique=True)

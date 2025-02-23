@@ -52,9 +52,15 @@ class PropertySearchView(APIView):
                     {"error": "Invalid date format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-        properties = Property.objects.filter(
-            city__city_name__icontains=location
+        exact_property_match=Property.objects.filter(
+            property_name__iexact=location,
         )
+        if exact_property_match.exists():
+            property_city = exact_property_match.first().city
+            other_properties = Property.objects.filter(city=property_city).exclude(id=exact_property_match.first().id)
+            properties = list(exact_property_match) + list(other_properties)
+        else:
+            properties = Property.objects.filter(Q(city__city_name__icontains=location))
         if min_price and max_price:
             properties = properties.filter(single_unit_price__base_price_per_night__range=(min_price, max_price))
 

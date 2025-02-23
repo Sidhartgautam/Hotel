@@ -44,7 +44,7 @@ class PropertyAmenitiesInline(admin.StackedInline):
 class PolicyInline(admin.StackedInline):
     model = Policy
     extra = 1
-    fields = ('checkin_time', 'checkout_time', 'children_allowed', 'extra_beds_available', 'extra_bed_cost',
+    fields = ('checkin_time_from', 'checkin_time_to', 'checkout_time_from', 'checkout_time_to', 'children_allowed', 'extra_beds_available', 'extra_bed_cost',
               'pets_allowed', 'pet_fee', 'pet_details')
     can_delete = True
 

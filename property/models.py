@@ -34,8 +34,8 @@ class Property(models.Model):
     address = models.CharField(max_length=50)
     city=models.ForeignKey(City, on_delete=models.CASCADE, related_name="properties",null=True,blank=True)
     state = models.CharField(max_length=50)
-    lng = models.DecimalField(max_digits=9, decimal_places=6)
-    lat = models.DecimalField(max_digits=9, decimal_places=6)
+    lng = models.DecimalField(max_digits=11, decimal_places=6, null=True, blank=True)
+    lat = models.DecimalField(max_digits=11, decimal_places=6, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
     user = models.ForeignKey(User,on_delete=models.CASCADE,null=True)
     category = models.ForeignKey(PropertyCategory, on_delete=models.CASCADE, related_name="properties")
@@ -177,8 +177,24 @@ class Policy(models.Model):
     property=models.ForeignKey(Property, on_delete=models.CASCADE, related_name="policies")
     
     # Check-in and Check-out times
-    checkin_time = models.TimeField(help_text="Time when check-in starts (e.g., 14:00).", blank=True, null=True)
-    checkout_time = models.TimeField(help_text="Time by which guests must check out (e.g., 12:00).", blank=True, null=True)
+    checkin_time_from = models.TimeField(
+        help_text="Time when check-in starts (e.g., 14:00).", 
+        blank=True, null=True
+    )
+    checkin_time_to = models.TimeField(
+        help_text="Time when check-in ends (e.g., 23:59).", 
+        blank=True, null=True
+    )
+
+    # ✅ Store Check-out Time as a Range
+    checkout_time_from = models.TimeField(
+        help_text="Time when check-out starts (e.g., 06:00).", 
+        blank=True, null=True
+    )
+    checkout_time_to = models.TimeField(
+        help_text="Time by which guests must check out (e.g., 12:00).", 
+        blank=True, null=True
+    )
 
     # Children Policy
     children_allowed = models.BooleanField(default=True, help_text="Are children allowed?")
@@ -219,7 +235,7 @@ class Policy(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Policy (Check-in: {self.checkin_time}, Check-out: {self.checkout_time})"
+        return f"Policy for {self.property.property_name}"
     
 
 class CancellationPolicy(models.Model):

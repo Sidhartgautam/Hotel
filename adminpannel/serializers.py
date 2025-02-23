@@ -157,13 +157,15 @@ class PolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = Policy
         fields = [
-            'property', 'checkin_time', 'checkout_time', 'children_allowed',
+            'property', 'checkin_time_from', 'checkin_time_to', 'checkout_time_from', 'checkout_time_to', 'children_allowed',
             'extra_beds_available', 'extra_bed_cost', 'pets_allowed', 'pet_fee', 'pet_details'
         ]
     def update(self, instance, validated_data):
         instance.property = validated_data.get('property', instance.property)
-        instance.checkin_time = validated_data.get('checkin_time', instance.checkin_time)
-        instance.checkout_time = validated_data.get('checkout_time', instance.checkout_time)
+        instance.checkin_time_from = validated_data.get('checkin_time_from', instance.checkin_time_from)
+        instance.checkin_time_to = validated_data.get('checkin_time_to', instance.checkin_time_to)
+        instance.checkout_time_from = validated_data.get('checkout_time_from', instance.checkout_time_from)
+        instance.checkout_time_to = validated_data.get('checkout_time_to', instance.checkout_time_to)
         instance.children_allowed = validated_data.get('children_allowed', instance.children_allowed)
         instance.extra_beds_available = validated_data.get('extra_beds_available', instance.extra_beds_available)
         instance.extra_bed_cost = validated_data.get('extra_bed_cost', instance.extra_bed_cost)

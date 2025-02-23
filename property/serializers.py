@@ -309,7 +309,7 @@ class PolicySerializer(serializers.ModelSerializer):
     class Meta:
         model = Policy
         fields = [
-            'id', 'property', 'checkin_time', 'checkout_time',
+            'id', 'property', 'checkin_time_from','checkin_time_to', 'checkout_time_from', 'checkout_time_to',
             'children_allowed', 'extra_beds_available', 'extra_bed_cost',
             'pets_allowed', 'pet_fee', 'pet_details'
         ]
