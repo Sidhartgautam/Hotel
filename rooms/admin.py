@@ -12,7 +12,7 @@ from .models import (
 
 class RoomAmenitiesInline(admin.StackedInline):
     model = RoomAmenities
-    extra = 0
+    extra = 0  # No extra blank forms
     fields = [
         'air_conditioning', 'free_wifi', 'television', 'minibar', 'wardrobe', 'desk',
         'telephone', 'safe', 'soundproofing', 'ironing_facilities', 'extra_long_beds',
@@ -20,9 +20,10 @@ class RoomAmenitiesInline(admin.StackedInline):
         'pool_view', 'attached_bathroom', 'free_toiletries', 'shower', 'bathtub',
         'balcony', 'patio', 'terrace', 'private_entrance', 'kitchenette', 'heating'
     ]
-    can_delete = True
+    can_delete = False  
     verbose_name = "Room Amenity"
     verbose_name_plural = "Room Amenities"
+
 
 
 class RoomBedInline(admin.TabularInline):
@@ -83,7 +84,7 @@ class BedTypeAdmin(admin.ModelAdmin):
 @admin.register(RoomAmenities)
 class RoomAmenitiesAdmin(admin.ModelAdmin):
     list_display = (
-        'room_type', 'air_conditioning', 'free_wifi', 'television', 'balcony', 'attached_bathroom'
+     'room_type', 'air_conditioning', 'free_wifi', 'television', 'balcony', 'attached_bathroom'
     )
     search_fields = ('room_type__room_name',)
     list_filter = (

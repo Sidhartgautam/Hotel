@@ -25,16 +25,12 @@ class RoomAmenitiesSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
     def to_representation(self, instance):
-        """
-        Filter and randomly select up to 5 amenities that are set to True.
-        """
         amenities = {
             field.name: getattr(instance, field.name)
             for field in self.Meta.model._meta.get_fields()
             if isinstance(field, models.BooleanField) and getattr(instance, field.name)
         }
-        
-        # Randomly select up to 5 amenities to display
+        # print("amenities",amenities)
         selected_amenities = random.sample(list(amenities.items()), min(5, len(amenities)))
         
         return {key: True for key, value in selected_amenities}
@@ -45,7 +41,7 @@ class RoomSerializer(serializers.ModelSerializer):
     price_per_night = serializers.SerializerMethodField()
     offer_price = serializers.SerializerMethodField()
     seasonal_price = serializers.SerializerMethodField()
-    room_amenities = RoomAmenitiesSerializer()
+    room_amenities=RoomAmenitiesSerializer(source='all_room_amenities',many=True,read_only=True)
     room_images=RoomImageSerializer(many=True, source='images')
 
     class Meta:
@@ -84,11 +80,23 @@ class RoomSerializer(serializers.ModelSerializer):
             end_date__gte=date.today()
         ).first()
         return seasonal_price.base_price_per_night if seasonal_price else None
+
+
     
 class AllRoomAmenitiesSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoomAmenities
-        fields = '__all__'  # Include all amenities
+        fields = '__all__' 
+
+    def to_representation(self, instance):
+        amenities = {
+            field.name: getattr(instance, field.name)
+            for field in self.Meta.model._meta.get_fields()
+            if isinstance(field, models.BooleanField) and getattr(instance, field.name)
+        }
+        selected_amenities = list(amenities.items())
+        
+        return {key: True for key, value in selected_amenities}
 
 class RoomBedSerializer(serializers.ModelSerializer):
     bed_type_name = serializers.CharField(source='bed_type.get_bed_type_display')  # Use get_bed_type_display
@@ -99,8 +107,8 @@ class RoomBedSerializer(serializers.ModelSerializer):
 
 class RoomDetailsSerializer(serializers.ModelSerializer):
     room_images = RoomImageSerializer(many=True, source='images')
-    room_amenities = RoomAmenitiesSerializer()
-    room_beds = RoomBedSerializer(many=True)  # Correctly handle the related manager
+    room_amenities=AllRoomAmenitiesSerializer(source='all_room_amenities',many=True,read_only=True)
+    room_beds = RoomBedSerializer(many=True) 
     extra_guest_price = serializers.SerializerMethodField()
     extra_breakfast_cost = serializers.SerializerMethodField()
     extra_parking_cost = serializers.SerializerMethodField()
