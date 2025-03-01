@@ -229,11 +229,8 @@ CSRF_TRUSTED_ORIGINS = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
-    "http://localhost:3002",
-    "http://192.168.1.74:3000",
-    "http://192.168.1.74:8000",
-    "http://192.168.1.106:3000",
-    "http://192.168.1.121:8000",
+    "https://morelivingglobal.com",
+    "https://www.morelivingglobal.com",
     "https://www.moredealsclub.com",
     "https://moreliving.vercel.app",
     "https://hotel-one-ochre.vercel.app"
