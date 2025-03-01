@@ -7,22 +7,40 @@ from .models import (
     Price,
     RoomImages,
 )
+from django.db import models
 
 # Inline classes for related models
 
+# class RoomAmenitiesInline(admin.StackedInline):
+#     model = RoomAmenities
+#     extra = 0  # No extra blank forms
+#     fields = [
+#         'air_conditioning', 'free_wifi', 'television', 'minibar', 'wardrobe', 'desk',
+#         'telephone', 'safe', 'soundproofing', 'ironing_facilities', 'extra_long_beds',
+#         'electric_blankets', 'garden_view', 'city_view', 'mountain_view', 'landmark_view',
+#         'pool_view', 'attached_bathroom', 'free_toiletries', 'shower', 'bathtub',
+#         'balcony', 'patio', 'terrace', 'private_entrance', 'kitchenette', 'heating'
+#     ]
+#     can_delete = False  
+#     verbose_name = "Room Amenity"
+#     verbose_name_plural = "Room Amenities"
 class RoomAmenitiesInline(admin.StackedInline):
     model = RoomAmenities
     extra = 0  # No extra blank forms
-    fields = [
-        'air_conditioning', 'free_wifi', 'television', 'minibar', 'wardrobe', 'desk',
-        'telephone', 'safe', 'soundproofing', 'ironing_facilities', 'extra_long_beds',
-        'electric_blankets', 'garden_view', 'city_view', 'mountain_view', 'landmark_view',
-        'pool_view', 'attached_bathroom', 'free_toiletries', 'shower', 'bathtub',
-        'balcony', 'patio', 'terrace', 'private_entrance', 'kitchenette', 'heating'
-    ]
     can_delete = False  
     verbose_name = "Room Amenity"
     verbose_name_plural = "Room Amenities"
+
+    # Automatically fetch all boolean fields from RoomAmenities
+    def get_fields(self, request, obj=None):
+        boolean_fields = [field.name for field in RoomAmenities._meta.get_fields() if isinstance(field, models.BooleanField)]
+        return boolean_fields
+
+    # Override the default field list
+    def formfield_for_dbfield(self, db_field, request, **kwargs):
+        if isinstance(db_field, models.BooleanField):
+            kwargs["required"] = False  # Ensure optional selection
+        return super().formfield_for_dbfield(db_field, request, **kwargs)
 
 
 
