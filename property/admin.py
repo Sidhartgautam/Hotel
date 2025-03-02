@@ -101,17 +101,15 @@ from .models import (
 )
 
 
-### Optimized Inlines with Limited Querysets ###
-
+### ✅ Optimized Inlines with Limited Querysets ###
 class BreakfastInfoInline(admin.StackedInline):
     model = BreakfastInfo
-    extra = 0  # No extra blank forms
+    extra = 0
     fields = ('serve_breakfast', 'breakfast_included', 'breakfast_type', 'extra_cost')
     can_delete = True
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs[:1]  # Load only 1 breakfast info to optimize
+        return super().get_queryset(request) 
 
 
 class ParkingInfoInline(admin.StackedInline):
@@ -121,8 +119,7 @@ class ParkingInfoInline(admin.StackedInline):
     can_delete = True
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs[:1]  # Load only 1 parking info
+        return super().get_queryset(request) 
 
 
 class PropertyImageInline(admin.TabularInline):
@@ -132,8 +129,7 @@ class PropertyImageInline(admin.TabularInline):
     can_delete = True
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs[:3]  # Load only 3 images per property
+        return super().get_queryset(request) 
 
 
 class PropertyAmenitiesInline(admin.StackedInline):
@@ -143,20 +139,19 @@ class PropertyAmenitiesInline(admin.StackedInline):
     can_delete = True
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs[:5]  # Load only 5 amenities
+        return super().get_queryset(request) 
 
 
 class PolicyInline(admin.StackedInline):
     model = Policy
     extra = 0
-    fields = ('checkin_time_from', 'checkin_time_to', 'checkout_time_from', 'checkout_time_to', 'children_allowed', 
-              'extra_beds_available', 'extra_bed_cost', 'pets_allowed', 'pet_fee', 'pet_details')
+    fields = ('checkin_time_from', 'checkin_time_to', 'checkout_time_from', 'checkout_time_to', 
+              'children_allowed', 'extra_beds_available', 'extra_bed_cost', 'pets_allowed', 
+              'pet_fee', 'pet_details')
     can_delete = True
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs[:1]  # Load only 1 policy record
+        return super().get_queryset(request) 
 
 
 class CancellationPolicyInline(admin.StackedInline):
@@ -167,8 +162,7 @@ class CancellationPolicyInline(admin.StackedInline):
     can_delete = True
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs[:1]  # Load only 1 cancellation policy
+        return super().get_queryset(request)
 
 
 class SingleUnitPriceInline(admin.StackedInline):
@@ -178,26 +172,22 @@ class SingleUnitPriceInline(admin.StackedInline):
     can_delete = False
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        return qs[:1]  # Load only 1 price info
+        return super().get_queryset(request) 
 
 
-### Optimized Property Admin ###
+### ✅ Fixed Property Admin ###
 @admin.register(Property)
 class PropertyAdmin(admin.ModelAdmin):
     list_display = ('property_name', 'country', 'city', 'is_single_unit', 'star_rating_property')
-    search_fields = ('property_name', 'address', 'city__name')
+
+    # ✅ Corrected `search_fields` to match actual model fields
+    search_fields = ('property_name', 'address', 'city__city_name', 'country__country_name')  
+
     list_filter = ('country', 'is_single_unit', 'star_rating_property')
 
-    # Use raw_id_fields for ForeignKeys to speed up admin
-    raw_id_fields = ('city',)
-    autocomplete_fields = ['country']
-
-    # Optimized QuerySet to reduce database load
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('country', 'city').prefetch_related('propertyimage_set')
+        return super().get_queryset(request).select_related('country', 'city').prefetch_related('images')
 
-    # Add optimized inlines
     inlines = [
         BreakfastInfoInline,
         ParkingInfoInline,
@@ -209,21 +199,24 @@ class PropertyAdmin(admin.ModelAdmin):
     ]
 
 
-### Optimized Amenity Admin ###
+### ✅ Fixed Amenity Admin ###
 @admin.register(Amenity)
 class AmenityAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
 
     def get_queryset(self, request):
-        return super().get_queryset(request)[:20]  # Load only 20 amenities
+        return super().get_queryset(request)[:20]  
 
 
-### Optimized PropertyCategory Admin ###
+### ✅ Fixed PropertyCategory Admin ###
 @admin.register(PropertyCategory)
 class PropertyCategoryAdmin(admin.ModelAdmin):
     list_display = ('category_name',)
     search_fields = ('category_name',)
 
     def get_queryset(self, request):
-        return super().get_queryset(request)[:10]  # Load only 10 property categories
+        return super().get_queryset(request)[:10]  
+
+
+
