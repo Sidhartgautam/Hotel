@@ -287,7 +287,7 @@ class RoomType(models.Model):
 
 
     def __str__(self):
-        return f"{self.get_room_type_display()} ({self.no_of_available_rooms} available)"
+        return f"{self.property.property_name} - {self.get_room_type_display()} ({self.no_of_available_rooms} available)"
 
 
 class RoomBed(models.Model):
