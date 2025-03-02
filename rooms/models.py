@@ -177,6 +177,14 @@ class RoomType(models.Model):
     ('deluxe_room_with_landmark_view', 'Deluxe Room with Landmark View'),
     ('penthouse_with_panorama_view', 'Penthouse with Panorama View'),
 
+    #deluxe_rooms
+    ('deluxe_room_with_garden_view', 'Deluxe Room with Garden View'),
+    ('deluxe_room_with_lake_view', 'Deluxe Room with Lake View'),
+    ('deluxe_room_with_view_room', 'Deluxe Room with View Room'),
+    ('deluxe_room_with_city_view', 'Deluxe Room with City View'),
+    ('simple Deluxe Room', 'Simple Deluxe Room'),
+   
+
     # Rooms with Special Features
     ('single_room_with_balcony', 'Single Room with Balcony'),
     ('double_room_with_terrace', 'Double Room with Terrace'),
