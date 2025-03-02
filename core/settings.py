@@ -228,6 +228,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
+    "http://192.168.1.106:3000",
     "http://localhost:3001",
     "https://morelivingglobal.com",
     "https://www.morelivingglobal.com",
