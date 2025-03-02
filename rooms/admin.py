@@ -132,8 +132,60 @@ from django.db import models
 from .models import RoomType, RoomAmenities, RoomBed, Price, RoomImages
 
 
-admin.site.register(RoomType)
-admin.site.register(RoomAmenities)
-admin.site.register(RoomBed)
-admin.site.register(Price)
-admin.site.register(RoomImages)
+### ✅ Optimized Inlines ###
+class RoomAmenitiesInline(admin.StackedInline):
+    model = RoomAmenities
+    extra = 0
+    can_delete = False  
+    verbose_name = "Room Amenity"
+    verbose_name_plural = "Room Amenities"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request)  # Limit to 5 amenities
+
+
+class RoomBedInline(admin.TabularInline):
+    model = RoomBed
+    extra = 1
+    fields = ['bed_type', 'quantity']
+    can_delete = True
+
+    def get_queryset(self, request):
+        return super().get_queryset(request)  
+
+
+class PriceInline(admin.StackedInline):
+    model = Price
+    extra = 0
+    fields = ['base_price_per_night', 'extra_guest_price', 'breakfast_price', 'parking_price',
+              'is_seasonal', 'start_date', 'end_date', 'discount_percentage', 'currency']
+    can_delete = True
+
+    def get_queryset(self, request):
+        return super().get_queryset(request)  
+
+
+class RoomImagesInline(admin.TabularInline):
+    model = RoomImages
+    extra = 2
+    fields = ['image']
+    can_delete = True
+
+    def get_queryset(self, request):
+        return super().get_queryset(request)  
+
+
+### ✅ Fixed RoomType Admin ###
+@admin.register(RoomType)
+class RoomTypeAdmin(admin.ModelAdmin):
+    list_display = ('property', 'room_type', 'room_name', 'no_of_available_rooms', 'max_no_of_guests', 'room_size', 'smoking_allowed')
+
+    # ✅ Fix: Ensure `search_fields` is properly set
+    search_fields = ('property__property_name', 'room_name')
+
+    list_filter = ('room_type', 'smoking_allowed', 'property')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('property').prefetch_related('room_amenities', 'room_beds', 'prices')
+
+    inlines = [RoomAmenitiesInline, RoomBedInline, PriceInline, RoomImagesInline]  
