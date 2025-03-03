@@ -128,9 +128,9 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'morehotels',
-        'USER': 'morehotels',  
-        'PASSWORD': 'HREyRRbz3cwA', 
+        'NAME': 'hotelfinal',
+        'USER': 'hotelfinal',  
+        'PASSWORD': 'pZ4rG6xmY2P4', 
         'HOST': '100.42.187.204',
         'PORT': '5432',
     }
