@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from datetime import date
 from .models import WeeklyOffer
-from .serializers import WeeklyOfferSerializer
+from .serializers import WeeklyOfferSerializer,AllOfferSerializer
 from core.utils.response import PrepareResponse
 
 class WeeklyOffersView(APIView):
@@ -49,4 +49,17 @@ class WeeklyOffersView(APIView):
             "message": "Weekly offers retrieved successfully",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
+    
+
+class AllOffersView(APIView):
+    serializer_class = AllOfferSerializer
+
+    def get(self, request):
+        weekly_offers = WeeklyOffer.objects.all()
+        serializer = self.serializer_class(weekly_offers, many=True)
+        return PrepareResponse(
+            success=True,
+            message="Weekly offers retrieved successfully",
+            data=serializer.data
+        ).send(status.HTTP_200_OK)
 
