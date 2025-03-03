@@ -1,6 +1,6 @@
 
 from rest_framework import generics
-from django.db.models import Count,Q, Avg, Exists, OuterRef
+from django.db.models import Count,Q, Avg, Exists, OuterRef, Prefetch
 from core.utils.pagination import CustomPageNumberPagination
 from .models import City
 from rest_framework.views import APIView  
@@ -348,29 +348,6 @@ class PropertyCategoryListView(generics.ListAPIView):
             data=serializer.data
         ).send(200)
     
-# class PropertyByPropertyTypeView(generics.ListAPIView):
-#     serializer_class = PropertyByCategorySerializer
-
-#     def get_queryset(self):
-#         property_type_id = self.kwargs.get('property_category_id')
-#         return PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
-
-#     def get(self, request, *args, **kwargs):
-#         queryset = self.get_queryset().first()
-#         if not queryset:
-#             return PrepareResponse(
-#                 success=False,
-#                 message="Category not found",
-#                 data=[]
-#             ).send(404)
-
-#         serializer = self.get_serializer(queryset)
-#         return PrepareResponse(
-#             success=True,
-#             message="Properties by property type retrieved successfully",
-#             data=serializer.data
-#         ).send(200)
-    
 class PropertyCancellationPolicyView(APIView):
 
     def get(self, request, property_id, *args, **kwargs):
@@ -480,21 +457,25 @@ class PropertyByPropertyTypeView(generics.ListAPIView):
 
     def get_queryset(self):
         property_type_id = self.kwargs.get('property_category_id')
-        country_code = self.request.country_code  
+        country_code = self.request.country_code
+        if not country_code:
+            return PropertyCategory.objects.none()
+        queryset = PropertyCategory.objects.prefetch_related(
+            Prefetch(
+                'properties',
+                queryset=Property.objects.select_related('category', 'city').prefetch_related('images', 'reviews')
+            )
+        ).filter(id=property_type_id, properties__country__country_code=country_code).distinct()
 
-        queryset = PropertyCategory.objects.prefetch_related('properties').filter(id=property_type_id)
-
-        if country_code:
-            queryset = queryset.filter(properties__country__country_code=country_code)
-
-        return queryset.distinct()
+        return queryset
 
     def get(self, request, *args, **kwargs):
         queryset = self.get_queryset().first()
+
         if not queryset:
             return PrepareResponse(
                 success=False,
-                message="Category not found or no properties available in this country.",
+                message="Country code is required or no properties found for this category.",
                 data=[]
             ).send(404)
 
@@ -504,4 +485,5 @@ class PropertyByPropertyTypeView(generics.ListAPIView):
             message="Properties by property type retrieved successfully",
             data=serializer.data
         ).send(200)
+
         
