@@ -10,7 +10,6 @@ from .views import (PropertySearchView,
                     PolicyByPropertySlugView,
                     PropertyAmenitiesListView
 )
-
 urlpatterns = [
     path('properties/list/', PropertyListView.as_view(), name='property-list'),
     path('properties/create/', PropertyCreateView.as_view(), name='property-create'),
