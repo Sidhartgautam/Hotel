@@ -179,7 +179,8 @@ class RoomType(models.Model):
 
     #deluxe_rooms
     ('deluxe_room_with_garden_view', 'Deluxe Room with Garden View'),
-    ('deluxe_room_with_lake_view', 'Deluxe Room with Lake View'),
+    ('super_deluxe_room_with_lake_view', 'Super Deluxe Room with Lake View'),
+    ('super_deluxe_room_with_city_view', 'Super Deluxe Room with City View'),
     ('deluxe_room_with_view_room', 'Deluxe Room with View Room'),
     ('deluxe_room_with_city_view', 'Deluxe Room with City View'),
     ('simple Deluxe Room', 'Simple Deluxe Room'),
