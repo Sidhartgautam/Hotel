@@ -158,36 +158,24 @@ class TrendingDestinationSerializer(serializers.ModelSerializer):
         return round(avg_price, 2) if avg_price else 0
     
 class PropertySerializer(serializers.ModelSerializer):
-    category=serializers.SerializerMethodField()
+    category = serializers.CharField(source="category.category_name")
+    city_name = serializers.CharField(source="city.city_name")
     short_description = serializers.SerializerMethodField()
-    rating = serializers.SerializerMethodField()
-    review_count = serializers.SerializerMethodField()
-    city_name = serializers.SerializerMethodField()
+    rating = serializers.FloatField(source="avg_rating", read_only=True)
+    review_count = serializers.IntegerField(read_only=True)
     images = PropertyImageSerializer(many=True, read_only=True)
+
     class Meta:
         model = Property
         fields = [
-            'id','category', 'property_name', 'short_description', 'city_name',
+            'id', 'category', 'property_name', 'short_description', 'city_name',
             'rating', 'review_count', 'images', 'slug'
         ]
-    def get_category(self,obj):
-        return obj.category.category_name
-    
-
-    def get_rating(self, obj):
-        avg_rating = PropertyReview.objects.filter(property_reviewed=obj).aggregate(avg_rating=Avg('rating'))['avg_rating']
-        return avg_rating or 0
-
-    def get_review_count(self, obj):
-        return PropertyReview.objects.filter(property_reviewed=obj).count()
 
     def get_short_description(self, obj):
         if obj.description:
             return obj.description.split('.', 1)[0].strip()
         return None
-
-    def get_city_name(self, obj):
-        return obj.city.city_name
     
 class PropertyByCategorySerializer(serializers.ModelSerializer):
     properties = serializers.SerializerMethodField()

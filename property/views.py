@@ -5,6 +5,7 @@ from core.utils.pagination import CustomPageNumberPagination
 from .models import City
 from rest_framework.views import APIView  
 from rest_framework.response import Response 
+from rest_framework.generics import ListAPIView
 from rest_framework import status  
 from datetime import date 
 from rooms.models import RoomType
@@ -299,12 +300,16 @@ class PropertySearchView(APIView):
             return exception_response(e)
     
     
-class PropertyListView(APIView):
-
-    def get(self, request):
-        properties = Property.objects.all()
-        serializer = PropertySerializer(properties, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class PropertyListView(ListAPIView):
+    queryset = Property.objects.select_related(
+        'category', 'city'
+    ).prefetch_related(
+        'images', 'reviews'  
+    ).annotate(
+        avg_rating=Avg('reviews__rating'),  
+        review_count=Count('reviews')
+    )
+    serializer_class = PropertySerializer
     
 class PropertyCreateView(APIView):
 
