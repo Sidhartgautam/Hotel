@@ -1,5 +1,4 @@
 from django.db import models
-from cloudinary.models import CloudinaryField
 from ckeditor.fields import RichTextField
 from country.models import Country,City
 from currency.models import Currency
@@ -12,7 +11,7 @@ class PropertyCategory(models.Model):
     id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     category_name = models.CharField(max_length=50)
     description=RichTextField(null=True,blank=True)
-    image=CloudinaryField('image',null=True,blank=True)
+    image=models.ImageField(upload_to='category/',null=True,blank=True)
 
     def __str__(self):
         return f"{self.category_name}"
@@ -145,7 +144,7 @@ class ParkingInfo(models.Model):
     
 class PropertyImage(models.Model):
     id=models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    image=CloudinaryField('image',null=True,blank=True)
+    image=models.ImageField(upload_to='property/',null=True,blank=True)
     property=models.ForeignKey(Property, on_delete=models.CASCADE, related_name="images")
 
     def __str__(self):

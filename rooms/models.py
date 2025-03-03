@@ -2,7 +2,6 @@ from django.db import models
 import uuid
 from currency.models import Currency
 from datetime import datetime,date
-from cloudinary.models import CloudinaryField
 
 # Create your models here.
 class BedType(models.Model):
@@ -435,9 +434,6 @@ class Price(models.Model):
         return f"General Price - {self.base_price_per_night} {self.currency}"
     
 class RoomImages(models.Model):
-    """
-    Model to store images for rooms.
-    """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room_type=models.ForeignKey(RoomType, on_delete=models.CASCADE, related_name="images")
-    image=CloudinaryField('image',null=True,blank=True)
+    image=models.ImageField(upload_to='rooms/',null=True,blank=True)
