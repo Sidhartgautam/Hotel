@@ -12,7 +12,7 @@ from rooms.models import RoomType
 from bookings.models import Booking
 from .models import Property,PropertyCategory,CancellationPolicy,Policy,PropertyAmenities
 from .serializers import CancellationPolicySerializer,PolicySerializer
-from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer,PropertyByCategorySerializer
+from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer,PropertyByCategorySerializer,MoredealspropertySerializer
 from core.utils.response import PrepareResponse ,exception_response
 # class PropertySearchView(APIView):
 #     def get(self, request):
@@ -454,7 +454,7 @@ class TrendingDestinationsView(generics.GenericAPIView):
     
 class PropertyByPropertyTypeView(generics.ListAPIView):
     serializer_class = PropertyByCategorySerializer
-
+    pagination_class = CustomPageNumberPagination
     def get_queryset(self):
         property_type_id = self.kwargs.get('property_category_id')
         country_code = self.request.country_code
@@ -463,7 +463,10 @@ class PropertyByPropertyTypeView(generics.ListAPIView):
         queryset = PropertyCategory.objects.prefetch_related(
             Prefetch(
                 'properties',
-                queryset=Property.objects.select_related('category', 'city').prefetch_related('images', 'reviews')
+                queryset=Property.objects.select_related('category', 'city').prefetch_related('images', 'reviews').annotate(
+                    avg_rating=Avg('reviews__rating'),
+                    review_count=Count('reviews')
+                ).order_by('-avg_rating', '-review_count')
             )
         ).filter(id=property_type_id, properties__country__country_code=country_code).distinct()
 
@@ -480,9 +483,22 @@ class PropertyByPropertyTypeView(generics.ListAPIView):
             ).send(404)
 
         serializer = self.get_serializer(queryset)
+        
         return PrepareResponse(
             success=True,
             message="Properties by property type retrieved successfully",
+            data=serializer.data
+        ).send(200)
+    
+class MoredealsPropertyListView(generics.ListAPIView):
+    serializer_class=MoredealspropertySerializer
+
+    def get(self,request,*args,**kwargs):
+        properties=Property.objects.all()
+        serializer=self.serializer_class(properties,many=True)
+        return PrepareResponse(
+            success=True,
+            message="More deals properties fetched successfully",
             data=serializer.data
         ).send(200)
 

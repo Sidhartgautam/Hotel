@@ -8,9 +8,11 @@ from .views import (PropertySearchView,
                     PropertyCancellationPolicyView,
                     PropertyDetailsView,
                     PolicyByPropertySlugView,
-                    PropertyAmenitiesListView
+                    PropertyAmenitiesListView,
+                    MoredealsPropertyListView
 )
 urlpatterns = [
+    path('moredeals/properties/list/', MoredealsPropertyListView.as_view(), name='moredeals-property-list'),
     path('properties/list/', PropertyListView.as_view(), name='property-list'),
     path('properties/create/', PropertyCreateView.as_view(), name='property-create'),
     path('search/', PropertySearchView.as_view(), name='property-search'),

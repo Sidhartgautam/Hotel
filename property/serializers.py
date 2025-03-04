@@ -313,3 +313,20 @@ class PolicySerializer(serializers.ModelSerializer):
                 "pet_details": "Pet details are required if pets are allowed."
             })
         return data
+    
+class MoredealspropertySerializer(serializers.ModelSerializer):
+    name=serializers.CharField(source='property_name')
+    banner=serializers.SerializerMethodField()
+    open_hrs=serializers.SerializerMethodField()
+    user=serializers.CharField(source='user.username')
+    class Meta:
+        model=Property
+        fields=['id','name','address','banner','user','slug','open_hrs']
+
+    def get_open_hrs(self, obj):
+        return None
+    def get_banner(self, obj):
+        image_first = obj.images.first()
+        if image_first:
+            return image_first.image.url
+        return None
