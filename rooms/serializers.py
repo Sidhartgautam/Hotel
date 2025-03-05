@@ -1,15 +1,20 @@
 from rest_framework import serializers
-from .models import RoomType,BedType,RoomAmenities,RoomImages,RoomBed
+from .models import RoomType,BedType,RoomAmenities,RoomImages,RoomBed,RoomAvailability
 import random
 from django.db import models
+from django.db.models import Sum
 from datetime import date
 class RoomTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = RoomType
         fields = [
-            'id', 'room_type', 'room_name', 'no_of_available_rooms',
+            'id', 'room_type', 'room_name',
             'max_no_of_guests', 'room_size', 'smoking_allowed'
         ]
+class RoomAvailabilitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RoomAvailability
+        fields = ['id', 'room_type', 'date', 'available_rooms']
 
 class RoomImageSerializer(serializers.ModelSerializer):
     image=serializers.SerializerMethodField()
@@ -37,7 +42,7 @@ class RoomAmenitiesSerializer(serializers.ModelSerializer):
 
 class RoomSerializer(serializers.ModelSerializer):
     room_type_name = serializers.CharField(source='get_room_type_display')
-    available_rooms = serializers.IntegerField(source='no_of_available_rooms')
+    available_rooms = serializers.SerializerMethodField()
     price_per_night = serializers.SerializerMethodField()
     offer_price = serializers.SerializerMethodField()
     seasonal_price = serializers.SerializerMethodField()
@@ -60,6 +65,24 @@ class RoomSerializer(serializers.ModelSerializer):
     def get_price_per_night(self, obj):
         price = obj.prices.filter(is_seasonal=False).first()
         return price.base_price_per_night if price else None
+    
+    def get_available_rooms(self, obj):
+        check_in = self.context.get('check_in', date.today())
+        check_out = self.context.get('check_out')
+
+        if check_out:
+            available_rooms = RoomAvailability.objects.filter(
+                room_type=obj,
+                date__gte=check_in,
+                date__lt=check_out
+            ).aggregate(total=Sum('available_rooms'))['total']
+        else:
+            available_rooms = RoomAvailability.objects.filter(
+                room_type=obj,
+                date=check_in 
+            ).aggregate(total=Sum('available_rooms'))['total']
+
+        return available_rooms or 0
 
     def get_offer_price(self, obj):
         offer = obj.property.weekly_offers.filter(

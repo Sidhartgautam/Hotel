@@ -1,6 +1,6 @@
 
 from rest_framework import generics
-from django.db.models import Count,Q, Avg, Exists, OuterRef, Prefetch, F, Case, When, Value
+from django.db.models import Count,Q, Avg, Exists, OuterRef, Prefetch, F, Case, When, Value,Sum
 from core.utils.pagination import CustomPageNumberPagination
 from .models import City
 from rest_framework.views import APIView  
@@ -175,8 +175,13 @@ class PropertySearchView(APIView):
                     errors={"location": "This field is required."}
                 ).send(code=status.HTTP_400_BAD_REQUEST)
 
-            # ✅ Convert dates safely
-            if check_in and check_out:
+            # ✅ Default to today's availability if no dates are provided
+            from datetime import date, timedelta
+
+            if not check_in or not check_out:
+                check_in = date.today()
+                check_out = check_in + timedelta(days=1)  # Default checkout is the next day
+            else:
                 try:
                     check_in = date.fromisoformat(check_in)
                     check_out = date.fromisoformat(check_out)
@@ -193,29 +198,17 @@ class PropertySearchView(APIView):
                         errors={"date_format": "Invalid format."}
                     ).send(code=status.HTTP_400_BAD_REQUEST)
 
-            else:
-                check_in, check_out = None, None
-
-            # ✅ Fastest way to check available rooms
+            # ✅ Search rooms based on RoomAvailability
             available_rooms_subquery = RoomType.objects.filter(
                 property=OuterRef('id'),
-                no_of_available_rooms__gte=rooms_requested,
-                max_no_of_guests__gte=max_guests
-            ).exclude(
-                Exists(
-                    Booking.objects.filter(
-                        room=OuterRef('id'),  
-                        check_in__lt=check_out,
-                        check_out__gt=check_in
-                    )
-                )
-            ).values('id')[:1] if check_in and check_out else RoomType.objects.filter(
-                property=OuterRef('id'),
-                no_of_available_rooms__gte=rooms_requested,
-                max_no_of_guests__gte=max_guests
-            ).values('id')[:1]
+                max_no_of_guests__gte=max_guests,
+                availabilities__date__gte=check_in,
+                availabilities__date__lt=check_out
+            ).annotate(
+                total_available=Sum('availabilities__available_rooms')
+            ).filter(total_available__gte=rooms_requested).values('id')[:1]
 
-            # ✅ Include Single-Unit Properties (like Apartments) in the search
+            # ✅ Search properties with available rooms
             properties = Property.objects.filter(
                 Q(city__city_name__icontains=location)
             ).select_related('city', 'country', 'currency', 'category')\
@@ -230,6 +223,7 @@ class PropertySearchView(APIView):
                         default=F('has_available_rooms')
                     )
                 ).filter(Q(is_single_unit_available=True)) 
+
             if min_price is not None and max_price is not None:
                 properties = properties.filter(single_unit_price__base_price_per_night__range=(min_price, max_price))
 
@@ -254,6 +248,7 @@ class PropertySearchView(APIView):
                 }.get(guest_rating, None)
                 if rating_threshold is not None:
                     properties = properties.filter(avg_rating__gte=rating_threshold)
+                    
             paginator = self.pagination_class()
             paginated_properties = paginator.paginate_queryset(properties, request)
 
@@ -279,6 +274,7 @@ class PropertySearchView(APIView):
 
         except Exception as e:
             return exception_response(e)
+
     
     
 class PropertyListView(ListAPIView):

@@ -6,9 +6,11 @@ from rooms.models import RoomType
 from rooms.serializers import RoomTypeSerializer
 from country.models import City
 from rooms.models import Price
-from django.db.models import Avg, Count
+from django.db.models import Avg
 from offers.models import WeeklyOffer
 from datetime import date
+from datetime import timedelta
+from django.db.models import Sum
 
 class PropertyCategorySerialzier(serializers.ModelSerializer):
     image=serializers.SerializerMethodField()
@@ -63,25 +65,21 @@ class PropertySearchSerializer(serializers.ModelSerializer):
         return obj.city.city_name
 
     def get_rooms(self, obj):
-        check_in = self.context.get('check_in')
-        check_out = self.context.get('check_out')
-        max_guests = self.context.get('max_guests')
+        check_in = self.context.get('check_in', date.today())  
+        check_out = self.context.get('check_out', check_in + timedelta(days=1)) 
+        max_guests = self.context.get('max_guests', 1)
         rooms_requested = self.context.get('rooms_requested', 1)
 
-        # Base query for available rooms
-        room_query = RoomType.objects.filter(
+        available_room_types = RoomType.objects.filter(
             property=obj,
-            no_of_available_rooms__gte=rooms_requested,
-            max_no_of_guests__gte=max_guests
-        )
-        if check_in and check_out:
-            room_query = room_query.exclude(
-                bookings__check_in__lt=check_out,
-                bookings__check_out__gt=check_in
-            )
+            max_no_of_guests__gte=max_guests,
+            availabilities__date__gte=check_in,
+            availabilities__date__lt=check_out  
+        ).annotate(
+            total_available=Sum('availabilities__available_rooms')
+        ).filter(total_available__gte=rooms_requested).distinct()
 
-        available_rooms = room_query
-        return RoomTypeSerializer(available_rooms, many=True).data
+        return RoomTypeSerializer(available_room_types, many=True).data
     def get_free_cancellation(self, obj):
         try:
             cancellation_policy = obj.cancellation_policy.first()
@@ -96,32 +94,31 @@ class PropertySearchSerializer(serializers.ModelSerializer):
             if hasattr(obj, 'single_unit_price') and obj.single_unit_price:
                 return obj.single_unit_price.get_effective_price()
             return None
-        check_in = self.context.get('check_in')
-        check_out = self.context.get('check_out')
-        max_guests = self.context.get('max_guests')
+
+        check_in = self.context.get('check_in', date.today())
+        check_out = self.context.get('check_out', check_in + timedelta(days=1))
+        max_guests = self.context.get('max_guests', 1)
         rooms_requested = self.context.get('rooms_requested', 1)
+
         room_query = RoomType.objects.filter(
             property=obj,
-            no_of_available_rooms__gte=rooms_requested,
-            max_no_of_guests__gte=max_guests
-        )
+            max_no_of_guests__gte=max_guests,
+            availabilities__date__gte=check_in,
+            availabilities__date__lt=check_out
+        ).annotate(
+            total_available=Sum('availabilities__available_rooms')
+        ).filter(total_available__gte=rooms_requested).distinct()
 
-        if check_in and check_out:
-            room_query = room_query.exclude(
-                bookings__check_in__lt=check_out,
-                bookings__check_out__gt=check_in
-            )
-        available_rooms = room_query
-        if available_rooms.exists():
+        if room_query.exists():
             prices = []
-            for room in available_rooms:
-                base_price = room.prices.first() 
+            for room in room_query:
+                base_price = room.prices.first()  
                 if base_price:
                     final_price = base_price.calculate_final_price(num_guests=max_guests)
-                    if base_price.is_active():
-                        if base_price.is_seasonal:
-                            seasonal_discount = base_price.discount_percentage
-                            final_price -= (final_price * (seasonal_discount / 100))
+                    if base_price.is_active() and base_price.is_seasonal:
+                        seasonal_discount = base_price.discount_percentage
+                        final_price -= (final_price * (seasonal_discount / 100))
+
                     weekly_offer = WeeklyOffer.objects.filter(
                         property=obj,
                         start_date__lte=date.today(),
@@ -133,9 +130,9 @@ class PropertySearchSerializer(serializers.ModelSerializer):
                         final_price -= (final_price * (offer_discount / 100))
 
                     prices.append(final_price)
-            if prices:
-                return min(prices)
+            return min(prices) if prices else None
         return None
+
     
 
 class TrendingDestinationSerializer(serializers.ModelSerializer):

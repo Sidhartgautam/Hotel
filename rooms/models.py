@@ -261,10 +261,10 @@ class RoomType(models.Model):
         choices=ROOM_NAME_CHOICES,
         help_text="Descriptive name for the room visible to guests"
     )
-    no_of_available_rooms = models.PositiveIntegerField(
-        default=1, 
-        help_text="Number of rooms available of this type"
-    )
+    # no_of_available_rooms = models.PositiveIntegerField(
+    #     default=1, 
+    #     help_text="Number of rooms available of this type"
+    # )
     max_no_of_guests = models.PositiveIntegerField(
         help_text="Maximum number of guests allowed in this room"
     )
@@ -287,7 +287,7 @@ class RoomType(models.Model):
 
 
     def __str__(self):
-        return f"{self.property.property_name} - {self.get_room_type_display()} ({self.no_of_available_rooms} available)"
+        return f"{self.property.property_name} - {self.get_room_type_display()} - {self.room_name}"
 
 
 class RoomBed(models.Model):
@@ -396,12 +396,7 @@ class Price(models.Model):
         ]
 
     def calculate_final_price(self, num_guests=1, include_breakfast=False, include_parking=False):
-        """
-        Calculate the final price based on guests, breakfast, and parking.
-        """
         price = self.base_price_per_night
-        
-        # Add extra guest cost if applicable
         if num_guests > 1:
             price += self.extra_guest_price * (num_guests - 1)
         
@@ -437,3 +432,18 @@ class RoomImages(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     room_type=models.ForeignKey(RoomType, on_delete=models.CASCADE, related_name="images")
     image=models.ImageField(upload_to='rooms/',null=True,blank=True)
+
+############Roomavailability##################
+
+class RoomAvailability(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False,)
+    room_type = models.ForeignKey(RoomType, on_delete=models.CASCADE, related_name="availabilities", help_text="Room type for this availability")
+    date = models.DateField(help_text="Date for room availability",null=True,blank=True)
+    available_rooms = models.PositiveIntegerField(default=0, help_text="Number of available rooms for this date",null=True,blank=True)
+
+    class Meta:
+        unique_together = ('room_type', 'date') 
+        ordering = ['date']
+
+    def __str__(self):
+        return f"{self.room_type.room_name} - {self.date}: {self.available_rooms} available"

@@ -22,9 +22,14 @@ class PropertyRoomListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         page = self.paginate_queryset(queryset)
+        context={
+            'request': request,
+            'check_in': request.query_params.get('check_in'),
+            'check_out': request.query_params.get('check_out'),
+        }
 
         if page is not None:
-            serializer = self.get_serializer(page, many=True)
+            serializer = self.get_serializer(page, many=True, context=context)
             paginated_response = self.get_paginated_response(serializer.data).data
             return PrepareResponse(
                 success=True,
