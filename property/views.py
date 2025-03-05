@@ -1,6 +1,6 @@
 
 from rest_framework import generics
-from django.db.models import Count,Q, Avg, Exists, OuterRef, Prefetch
+from django.db.models import Count,Q, Avg, Exists, OuterRef, Prefetch, F, Case, When, Value
 from core.utils.pagination import CustomPageNumberPagination
 from .models import City
 from rest_framework.views import APIView  
@@ -14,160 +14,141 @@ from .models import Property,PropertyCategory,CancellationPolicy,Policy,Property
 from .serializers import CancellationPolicySerializer,PolicySerializer
 from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer,PropertyByCategorySerializer,MoredealspropertySerializer
 from core.utils.response import PrepareResponse ,exception_response
+
 # class PropertySearchView(APIView):
+#     pagination_class = CustomPageNumberPagination  
+
 #     def get(self, request):
-#         location = request.query_params.get('location', None)
-#         check_in = request.query_params.get('check_in', None)
-#         check_out = request.query_params.get('check_out', None)
-#         adults = int(request.query_params.get('adults', 0))
-#         children = int(request.query_params.get('children', 0))
-#         rooms_requested = int(request.query_params.get('rooms', 1)) 
-#         max_guests = adults + children
-#         min_price = request.query_params.get('min_price', None)
-#         max_price = request.query_params.get('max_price', None)
-#         star_rating = request.query_params.get('star_rating', None)
-#         amenities = request.query_params.getlist('amenities', [])
-#         property_type = request.query_params.get('property_type', None)
-#         pets_allowed = request.query_params.get('pets_allowed', None)
-#         free_cancellation = request.query_params.get('free_cancellation', None)
-#         room_amenities = request.query_params.getlist('room_amenities', [])
-#         bed_type = request.query_params.get('bed_type', None)
-#         guest_rating = request.query_params.get('guest_rating', None)
+#         try:
+#             location = request.query_params.get('location', None)
+#             check_in = request.query_params.get('check_in', None)
+#             check_out = request.query_params.get('check_out', None)
+#             adults = int(request.query_params.get('adults', 0) or 0)
+#             children = int(request.query_params.get('children', 0) or 0)
+#             rooms_requested = int(request.query_params.get('rooms', 1) or 1)
+#             max_guests = adults + children
+#             min_price = request.query_params.get('min_price', None)
+#             max_price = request.query_params.get('max_price', None)
+#             star_rating = request.query_params.get('star_rating', None)
+#             property_type = request.query_params.get('property_type', None)
+#             pets_allowed = request.query_params.get('pets_allowed', None)
+#             free_cancellation = request.query_params.get('free_cancellation', None)
+#             bed_type = request.query_params.get('bed_type', None)
+#             guest_rating = request.query_params.get('guest_rating', None)
 
-#         if not location:
-#             return Response(
-#                 {"error": "location is a required field."},
-#                 status=status.HTTP_400_BAD_REQUEST
-#             )
+#             if not location:
+#                 return PrepareResponse(
+#                     success=False,
+#                     message="Location is a required field.",
+#                     errors={"location": "This field is required."}
+#                 ).send(code=status.HTTP_400_BAD_REQUEST)
 
-#         # Optional date validation
-#         if check_in and check_out:
-#             try:
-#                 check_in = date.fromisoformat(check_in)
-#                 check_out = date.fromisoformat(check_out)
-#                 if check_in >= check_out:
-#                     return Response(
-#                         {"error": "check_out must be after check_in."},
-#                         status=status.HTTP_400_BAD_REQUEST
+#             # ✅ Convert dates safely
+#             if check_in and check_out:
+#                 try:
+#                     check_in = date.fromisoformat(check_in)
+#                     check_out = date.fromisoformat(check_out)
+#                     if check_in >= check_out:
+#                         return PrepareResponse(
+#                             success=False,
+#                             message="Check-out must be after check-in.",
+#                             errors={"check_out": "Must be after check-in."}
+#                         ).send(code=status.HTTP_400_BAD_REQUEST)
+#                 except ValueError:
+#                     return PrepareResponse(
+#                         success=False,
+#                         message="Invalid date format. Use YYYY-MM-DD.",
+#                         errors={"date_format": "Invalid format."}
+#                     ).send(code=status.HTTP_400_BAD_REQUEST)
+
+#             else:
+#                 check_in, check_out = None, None
+
+#             # ✅ Fastest way to check available rooms
+#             available_rooms_subquery = RoomType.objects.filter(
+#                 property=OuterRef('id'),
+#                 no_of_available_rooms__gte=rooms_requested,
+#                 max_no_of_guests__gte=max_guests
+#             ).exclude(
+#                 Exists(
+#                     Booking.objects.filter(
+#                         room=OuterRef('id'),  # ✅ Correct field reference
+#                         check_in__lt=check_out,
+#                         check_out__gt=check_in
 #                     )
-#             except ValueError:
-#                 return Response(
-#                     {"error": "Invalid date format. Use YYYY-MM-DD."},
-#                     status=status.HTTP_400_BAD_REQUEST
 #                 )
-#         exact_property_match=Property.objects.filter(
-#             property_name__iexact=location,
-#         )
-#         if exact_property_match.exists():
-#             property_city = exact_property_match.first().city
-#             other_properties = Property.objects.filter(city=property_city).exclude(id=exact_property_match.first().id)
-#             properties = list(exact_property_match) + list(other_properties)
-#         else:
-#             properties = Property.objects.filter(Q(city__city_name__icontains=location))
-#         if min_price and max_price:
-#             properties = properties.filter(single_unit_price__base_price_per_night__range=(min_price, max_price))
+#             ).values('id')[:1] if check_in and check_out else RoomType.objects.filter(
+#                 property=OuterRef('id'),
+#                 no_of_available_rooms__gte=rooms_requested,
+#                 max_no_of_guests__gte=max_guests
+#             ).values('id')[:1]
+#             properties = Property.objects.filter(Q(city__city_name__icontains=location))\
+#                 .select_related('city', 'country', 'currency', 'category')\
+#                 .prefetch_related('images', 'amenities', 'room_type')\
+#                 .defer('description', 'updated_at')\
+#                 .annotate(
+#                     avg_rating=Avg('reviews__rating'),
+#                     review_count=Count('reviews'),
+#                     has_available_rooms=Exists(available_rooms_subquery)
+#                 ).filter(has_available_rooms=True)
 
-#         if star_rating:
-#             properties = properties.filter(star_rating_property__gte=int(star_rating))
+#             # ✅ Apply only non-empty filters
+#             if min_price is not None and max_price is not None:
+#                 properties = properties.filter(single_unit_price__base_price_per_night__range=(min_price, max_price))
 
-#         if property_type:
-#             properties = properties.filter(category__category_name__icontains=property_type)
+#             if star_rating:
+#                 properties = properties.filter(star_rating_property__gte=int(star_rating))
 
-#         if amenities:
-#             properties = properties.filter(amenities__amenity__name__in=amenities).distinct()
+#             if property_type:
+#                 properties = properties.filter(category__category_name__icontains=property_type)
 
-#         if pets_allowed:
-#             properties = properties.filter(policies__pets_allowed=(pets_allowed.lower() == 'true'))
+#             if pets_allowed is not None:
+#                 properties = properties.filter(policies__pets_allowed=(pets_allowed.lower() == 'true'))
 
-#         if free_cancellation:
-#             properties = properties.filter(cancellation_policy__cancellation_fee_type='none')
-        
-#         if room_amenities:
-#             filtered_properties = []
-#             for property in properties:
-#                 for room in property.room_type.all():
-#                     if room.room_amenities:
-#                         has_all_amenities = all(
-#                             getattr(room.room_amenities, amenity.lower().replace(" ", "_"), False) 
-#                             for amenity in room_amenities
-#                         )
-#                         if has_all_amenities:
-#                             filtered_properties.append(property)
-#                             break 
+#             if free_cancellation is not None:
+#                 properties = properties.filter(cancellation_policy__cancellation_fee_type='none')
 
-#             properties = filtered_properties
+#             if bed_type:
+#                 properties = properties.filter(room_type__room_beds__bed_type__bed_type__iexact=bed_type.strip()).distinct()
 
-#         if bed_type:
-#             properties = properties.filter(room_type__room_beds__bed_type__bed_type__iexact=bed_type.strip()).distinct()
-        
-#         if guest_rating:
-#             rating_threshold = None
-#             if guest_rating == "9+":
-#                 rating_threshold = 9.0
-#             elif guest_rating == "8+":
-#                 rating_threshold = 8.0
-#             elif guest_rating == "7+":
-#                 rating_threshold = 7.0
-#             elif guest_rating == "6+":
-#                 rating_threshold = 6.0
+#             if guest_rating:
+#                 rating_threshold = {
+#                     "9+": 9.0, "8+": 8.0, "7+": 7.0, "6+": 6.0
+#                 }.get(guest_rating, None)
+#                 if rating_threshold is not None:
+#                     properties = properties.filter(avg_rating__gte=rating_threshold)
 
-#             if rating_threshold:
-#                 properties = properties.annotate(avg_guest_review=Avg(
-#                     ('guest_reviews__staff' +
-#                      'guest_reviews__facilities' +
-#                      'guest_reviews__cleanliness' +
-#                      'guest_reviews__comfort' +
-#                      'guest_reviews__value_for_money' +
-#                      'guest_reviews__location' +
-#                      'guest_reviews__free_wifi') / 7
-#                 )).filter(avg_guest_review__gte=rating_threshold)
+#             # ✅ **Apply Pagination**
+#             paginator = self.pagination_class()
+#             paginated_properties = paginator.paginate_queryset(properties, request)
 
-#         if check_in and check_out:
-#             filtered_properties = []
-#             for property in properties:
-#                 available_rooms = property.room_type.filter(
-#                     no_of_available_rooms__gte=rooms_requested,
-#                     max_no_of_guests__gte=max_guests
-#                 ).exclude(
-#                     bookings__check_in__lt=check_out,
-#                     bookings__check_out__gt=check_in
-#                 )
-#                 if available_rooms.exists():
-#                     filtered_properties.append(property)
-#             properties = filtered_properties
-#         property_count = len(properties)
-
-#         serializer = PropertySearchSerializer(
-#             properties,
-#             many=True,
-#             context={
+#             serializer = PropertySearchSerializer(paginated_properties, many=True, context={
 #                 'check_in': check_in,
 #                 'check_out': check_out,
 #                 'max_guests': max_guests,
 #                 'rooms_requested': rooms_requested
-#             }
-#         )
-#         return Response({
-#             "property_count": property_count,
-#             "properties": serializer.data
-#         }, status=status.HTTP_200_OK)
+#             })
 
+#             paginated_data = paginator.get_paginated_response(serializer.data)
 
-# class TrendingDestinationsView(generics.GenericAPIView):
-#     def get(self, request, *args, **kwargs):
-#         cities = City.objects.annotate(
-#             property_count=Count('properties') 
-#         ).filter(property_count__gt=0).order_by('-property_count')[:6] 
+#             # ✅ **Return structured response**
+#             return PrepareResponse(
+#                 success=True,
+#                 message="Properties fetched successfully.",
+#                 data=paginated_data["results"],  # ✅ `results` inside `data`
+#                 meta={  # ✅ Meta information
+#                     "links": paginated_data["links"],
+#                     "count": paginated_data["count"],
+#                     "page_number": paginated_data["page_number"],
+#                     "total_pages": paginated_data["total_pages"],
+#                 }
+#             ).send(code=status.HTTP_200_OK)
 
-#         serializer = TrendingDestinationSerializer(cities, many=True)
-#         return PrepareResponse(
-#             success=True,
-#             message="Trending destinations retrieved successfully",
-#             data=serializer.data
-#         ).send(200)
+#         except Exception as e:
+#             return exception_response(e)
 
 class PropertySearchView(APIView):
-    pagination_class = CustomPageNumberPagination  # ✅ Added Pagination Class
+    pagination_class = CustomPageNumberPagination  
 
     def get(self, request):
         try:
@@ -223,7 +204,7 @@ class PropertySearchView(APIView):
             ).exclude(
                 Exists(
                     Booking.objects.filter(
-                        room=OuterRef('id'),  # ✅ Correct field reference
+                        room=OuterRef('id'),  
                         check_in__lt=check_out,
                         check_out__gt=check_in
                     )
@@ -234,17 +215,21 @@ class PropertySearchView(APIView):
                 max_no_of_guests__gte=max_guests
             ).values('id')[:1]
 
-            properties = Property.objects.filter(Q(city__city_name__icontains=location))\
-                .select_related('city', 'country', 'currency', 'category')\
+            # ✅ Include Single-Unit Properties (like Apartments) in the search
+            properties = Property.objects.filter(
+                Q(city__city_name__icontains=location)
+            ).select_related('city', 'country', 'currency', 'category')\
                 .prefetch_related('images', 'amenities', 'room_type')\
                 .defer('description', 'updated_at')\
                 .annotate(
                     avg_rating=Avg('reviews__rating'),
                     review_count=Count('reviews'),
-                    has_available_rooms=Exists(available_rooms_subquery)
-                ).filter(has_available_rooms=True)
-
-            # ✅ Apply only non-empty filters
+                    has_available_rooms=Exists(available_rooms_subquery),
+                    is_single_unit_available=Case(
+                        When(is_single_unit=True, then=Value(True)),
+                        default=F('has_available_rooms')
+                    )
+                ).filter(Q(is_single_unit_available=True)) 
             if min_price is not None and max_price is not None:
                 properties = properties.filter(single_unit_price__base_price_per_night__range=(min_price, max_price))
 
@@ -269,8 +254,6 @@ class PropertySearchView(APIView):
                 }.get(guest_rating, None)
                 if rating_threshold is not None:
                     properties = properties.filter(avg_rating__gte=rating_threshold)
-
-            # ✅ **Apply Pagination**
             paginator = self.pagination_class()
             paginated_properties = paginator.paginate_queryset(properties, request)
 
@@ -282,13 +265,11 @@ class PropertySearchView(APIView):
             })
 
             paginated_data = paginator.get_paginated_response(serializer.data)
-
-            # ✅ **Return structured response**
             return PrepareResponse(
                 success=True,
                 message="Properties fetched successfully.",
-                data=paginated_data["results"],  # ✅ `results` inside `data`
-                meta={  # ✅ Meta information
+                data=paginated_data["results"], 
+                meta={
                     "links": paginated_data["links"],
                     "count": paginated_data["count"],
                     "page_number": paginated_data["page_number"],
