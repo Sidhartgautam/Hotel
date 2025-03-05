@@ -13,6 +13,9 @@ from core.utils.moredealstoken import get_moredeals_token
 from core.utils.booking_email import send_booking_confirmation_email
 import stripe
 import requests
+from datetime import timedelta
+from rooms.models import RoomAvailability
+from django.utils import timezone
 from django.conf import settings
 
 
@@ -130,6 +133,39 @@ class BookingCreateAPIView(APIView):
             errors = response.json().get('errors', 'Unknown error')
             raise ValidationError(f"MoreDeals payment failed: {errors}")
         
+# class BookingCancellationView(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def post(self, request, booking_id, *args, **kwargs):
+#         try:
+#             booking = Booking.objects.get(id=booking_id, user=request.user)
+
+#             if booking.cancellation_status == 'canceled':
+#                 return PrepareResponse(
+#                     success=False,
+#                     message="This booking has already been canceled.",
+#                 ).send(status.HTTP_400_BAD_REQUEST)
+#             cancellation_data = cancel_booking(booking)
+
+#             return PrepareResponse(
+#                 success=True,
+#                 message=cancellation_data['message'],
+#                 data={
+#                     "cancellation_fee": cancellation_data["cancellation_fee"],
+#                     "refundable_amount": cancellation_data["refundable_amount"],
+#                 }
+#             ).send(status.HTTP_200_OK)
+#         except Booking.DoesNotExist:
+#             return PrepareResponse(
+#                 success=False,
+#                 message="Booking not found.",
+#                 errors={"id": "Invalid booking ID."}
+#             ).send(status.HTTP_404_NOT_FOUND)
+#         except ValueError as e:
+#             return PrepareResponse(
+#                 success=False,
+#                 message=str(e),
+#             ).send(status.HTTP_400_BAD_REQUEST)
 class BookingCancellationView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -142,22 +178,40 @@ class BookingCancellationView(APIView):
                     success=False,
                     message="This booking has already been canceled.",
                 ).send(status.HTTP_400_BAD_REQUEST)
-            cancellation_data = cancel_booking(booking)
+
+            with transaction.atomic():
+                cancellation_data = cancel_booking(booking)
+                if booking.room:
+                    check_in = booking.check_in
+                    check_out = booking.check_out
+
+                    for single_date in (check_in + timedelta(days=n) for n in range((check_out - check_in).days)):
+                        room_availability, created = RoomAvailability.objects.get_or_create(
+                            room_type=booking.room, date=single_date
+                        )
+
+                        room_availability.available_rooms += 1 
+                        room_availability.save()
+                booking.cancellation_status = 'canceled'
+                booking.cancellation_date = timezone.now().date()
+                booking.save()
 
             return PrepareResponse(
                 success=True,
-                message=cancellation_data['message'],
+                message="Booking canceled successfully, and room availability restored.",
                 data={
                     "cancellation_fee": cancellation_data["cancellation_fee"],
                     "refundable_amount": cancellation_data["refundable_amount"],
                 }
             ).send(status.HTTP_200_OK)
+
         except Booking.DoesNotExist:
             return PrepareResponse(
                 success=False,
                 message="Booking not found.",
                 errors={"id": "Invalid booking ID."}
             ).send(status.HTTP_404_NOT_FOUND)
+
         except ValueError as e:
             return PrepareResponse(
                 success=False,
