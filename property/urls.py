@@ -9,7 +9,8 @@ from .views import (PropertySearchView,
                     PropertyDetailsView,
                     PolicyByPropertySlugView,
                     PropertyAmenitiesListView,
-                    MoredealsPropertyListView
+                    MoredealsPropertyListView,
+                    PopularPropertiesView,
 )
 urlpatterns = [
     path('moredeals/properties/list/', MoredealsPropertyListView.as_view(), name='moredeals-property-list'),
@@ -23,4 +24,5 @@ urlpatterns = [
     path('properties/<str:slug>/details/',PropertyDetailsView.as_view(), name='property-details'),
     path('policies/<slug:slug>/', PolicyByPropertySlugView.as_view(), name='policy-by-property-slug'),
     path('properties/<str:property_slug>/amenities/', PropertyAmenitiesListView.as_view(), name='property-amenities-list'),
+    path('popular-properties/', PopularPropertiesView.as_view(), name='popular-properties'),
 ]

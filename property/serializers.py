@@ -327,3 +327,22 @@ class MoredealspropertySerializer(serializers.ModelSerializer):
         if image_first:
             return image_first.image.url
         return None
+    
+class PopularPropertySerializer(serializers.ModelSerializer):
+    booking_count = serializers.IntegerField(read_only=True)
+    review_count = serializers.IntegerField(read_only=True)
+    effective_price = serializers.FloatField(read_only=True)
+    popularity_score = serializers.FloatField(read_only=True)
+    image=serializers.SerializerMethodField()
+
+    class Meta:
+        model = Property
+        fields = [
+            'id', 'property_name', 'address', 'star_rating_property', 'booking_count',
+            'review_count', 'effective_price', 'popularity_score', 'slug','image'
+        ]
+    def get_image(self, obj):
+        image_first = obj.images.first()
+        if image_first:
+            return image_first.image.url
+        return None

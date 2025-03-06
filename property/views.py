@@ -1,18 +1,19 @@
 
 from rest_framework import generics
-from django.db.models import Count,Q, Avg, Exists, OuterRef, Prefetch, F, Case, When, Value,Sum
+from django.db.models import Count,Q, Avg, Exists, OuterRef, Prefetch, F, Case, When, Value,Sum, ExpressionWrapper, FloatField, Min, Subquery
+from django.db.models.functions import Coalesce
 from core.utils.pagination import CustomPageNumberPagination
 from .models import City
+from rooms.models import Price
 from rest_framework.views import APIView  
 from rest_framework.response import Response 
 from rest_framework.generics import ListAPIView
 from rest_framework import status  
-from datetime import date 
+from country.models import Country
 from rooms.models import RoomType
-from bookings.models import Booking
 from .models import Property,PropertyCategory,CancellationPolicy,Policy,PropertyAmenities
 from .serializers import CancellationPolicySerializer,PolicySerializer
-from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer,PropertyByCategorySerializer,MoredealspropertySerializer
+from .serializers import TrendingDestinationSerializer,PropertySearchSerializer,PropertySerializer,PropertyCategorySerialzier,PropertyDetailsSerializer,PropertyAmenitiesSerializer,PropertyByCategorySerializer,MoredealspropertySerializer,PopularPropertySerializer
 from core.utils.response import PrepareResponse ,exception_response
 
 # class PropertySearchView(APIView):
@@ -476,6 +477,73 @@ class MoredealsPropertyListView(generics.ListAPIView):
         return PrepareResponse(
             success=True,
             message="More deals properties fetched successfully",
+            data=serializer.data
+        ).send(200)
+    
+
+class PopularPropertiesView(generics.GenericAPIView):
+    def get(self, request, *args, **kwargs):
+        country_code = self.request.country_code  # Ensure correct country code retrieval
+
+        if not country_code:
+            return PrepareResponse(
+                success=False,
+                message="Country code is required",
+                errors={"country_code": "Missing country code in request"}
+            ).send(400)
+
+        try:
+            country = Country.objects.get(country_code=country_code)
+        except Country.DoesNotExist:
+            return PrepareResponse(
+                success=False,
+                message="Country not found",
+                errors={"country_code": "Invalid country code"}
+            ).send(404)
+
+        # Get the minimum room price for the country (to normalize price score)
+        min_room_price = Price.objects.filter(property__country=country).aggregate(
+            min_price=Min('base_price_per_night')
+        )['min_price'] or 1  # Default to 1 to prevent division errors
+
+        properties = Property.objects.filter(country=country).annotate(
+            booking_count=Count('bookings'),
+            review_count=Count('reviews'),
+
+            # **Determine the price based on property type**
+            base_price=Coalesce(
+                F('single_unit_price__base_price_per_night'),
+                Subquery(
+                    Price.objects.filter(property=OuterRef('id'))
+                    .order_by('base_price_per_night')
+                    .values('base_price_per_night')[:1]
+                ),
+
+                Value(0), output_field=FloatField()
+            ),
+
+            discount=Coalesce(F('single_unit_price__discount_percentage'), Value(0), output_field=FloatField()),
+
+            effective_price=ExpressionWrapper(
+                F('base_price') - (F('base_price') * F('discount') / 100),
+                output_field=FloatField()
+            ),
+            price_score=ExpressionWrapper(
+                F('effective_price') / min_room_price,
+                output_field=FloatField()
+            ),
+            popularity_score=ExpressionWrapper(
+                (F('booking_count') * 0.5) + 
+                (F('review_count') * 0.3) -  
+                (F('price_score') * 0.2), 
+                output_field=FloatField()
+            )
+        ).order_by('-popularity_score')[:10]  
+
+        serializer = PopularPropertySerializer(properties, many=True)
+        return PrepareResponse(
+            success=True,
+            message="Popular properties fetched successfully",
             data=serializer.data
         ).send(200)
 
