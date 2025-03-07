@@ -38,6 +38,7 @@ class Booking(models.Model):
     )
     check_in = models.DateField(help_text="Check-in date for the booking.")
     check_out = models.DateField(help_text="Check-out date for the booking.")
+    num_rooms = models.PositiveIntegerField(default=1, help_text="Number of rooms booked.",null=True,blank=True)
     num_guests = models.PositiveIntegerField(help_text="Number of guests for the booking.")
     customer_phone = models.CharField(max_length=20, help_text="Phone number of the customer.",null=True,blank=True)
     first_name = models.CharField(max_length=255, help_text="First name of the customer.",null=True,blank=True)

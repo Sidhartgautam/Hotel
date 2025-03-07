@@ -131,13 +131,18 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         allow_blank=True,
         help_text="Country code instead of country ID."
     )
+    num_rooms = serializers.IntegerField(
+        required=False,
+        help_text="Number of rooms to book.",
+        min_value=1
+    )
 
     class Meta:
         model = Booking
         fields = [
             'property_slug', 'room', 'check_in', 'check_out', 'num_guests',
             'first_name', 'last_name', 'country_code', 'customer_email', 
-            'payment_method', 'payment_method_id', 'pin', 'total_price'
+            'payment_method', 'payment_method_id', 'pin', 'total_price','num_rooms'
         ]
 
     def validate(self, data):
@@ -145,6 +150,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         check_out = data.get('check_out')
         payment_method = data.get('payment_method')
         room = data.get('room')
+        num_rooms = data.get('num_rooms')
         property_slug = data.pop('property_slug', None)
         country_code = data.pop('country_code', None) 
 
@@ -180,6 +186,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         # ✅ Handle Single-Unit Property Bookings
         if property_obj.is_single_unit:
             data['room'] = None  # Single-unit properties don't have rooms, so we set this to None
+            data['num_rooms'] = 1  # Single-unit properties always have 1 room
         else:
             # ✅ Validate Room Availability for Multi-Room Properties
             if not room:
@@ -210,6 +217,7 @@ class BookingCreateSerializer(serializers.ModelSerializer):
         total_price = calculate_booking_price(validated_data) 
         validated_data['total_price'] = total_price
         room = validated_data.get('room')
+        num_rooms = validated_data.get('num_rooms')
         check_in = validated_data.get('check_in')
         check_out = validated_data.get('check_out')
 

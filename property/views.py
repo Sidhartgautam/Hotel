@@ -279,15 +279,22 @@ class PropertySearchView(APIView):
     
     
 class PropertyListView(ListAPIView):
-    queryset = Property.objects.select_related(
-        'category', 'city'
-    ).prefetch_related(
-        'images', 'reviews'  
-    ).annotate(
-        avg_rating=Avg('reviews__rating'),  
-        review_count=Count('reviews')
-    )
-    serializer_class = PropertySerializer
+    serializer_class=MoredealspropertySerializer
+
+    def get_queryset(self):
+        country_code = self.request.country_code
+        if not country_code:
+            return Property.objects.none()
+        return Property.objects.filter(country__country_code=country_code)
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return PrepareResponse(
+            success=True,
+            message="Properties fetched successfully",
+            data=serializer.data
+        ).send(200)
     
 class PropertyCreateView(APIView):
 
@@ -483,7 +490,7 @@ class MoredealsPropertyListView(generics.ListAPIView):
 
 class PopularPropertiesView(generics.GenericAPIView):
     def get(self, request, *args, **kwargs):
-        country_code = self.request.country_code  # Ensure correct country code retrieval
+        country_code = self.request.country_code  
 
         if not country_code:
             return PrepareResponse(

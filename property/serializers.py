@@ -333,15 +333,16 @@ class PopularPropertySerializer(serializers.ModelSerializer):
     review_count = serializers.IntegerField(read_only=True)
     effective_price = serializers.FloatField(read_only=True)
     popularity_score = serializers.FloatField(read_only=True)
-    image=serializers.SerializerMethodField()
+    banner=serializers.SerializerMethodField()
+    name=serializers.CharField(source='property_name')
 
     class Meta:
         model = Property
         fields = [
-            'id', 'property_name', 'address', 'star_rating_property', 'booking_count',
-            'review_count', 'effective_price', 'popularity_score', 'slug','image'
+            'id', 'name', 'address', 'star_rating_property', 'booking_count',
+            'review_count', 'effective_price', 'popularity_score', 'slug','banner'
         ]
-    def get_image(self, obj):
+    def get_banner(self, obj):
         image_first = obj.images.first()
         if image_first:
             return image_first.image.url

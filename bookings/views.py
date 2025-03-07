@@ -133,39 +133,6 @@ class BookingCreateAPIView(APIView):
             errors = response.json().get('errors', 'Unknown error')
             raise ValidationError(f"MoreDeals payment failed: {errors}")
         
-# class BookingCancellationView(APIView):
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request, booking_id, *args, **kwargs):
-#         try:
-#             booking = Booking.objects.get(id=booking_id, user=request.user)
-
-#             if booking.cancellation_status == 'canceled':
-#                 return PrepareResponse(
-#                     success=False,
-#                     message="This booking has already been canceled.",
-#                 ).send(status.HTTP_400_BAD_REQUEST)
-#             cancellation_data = cancel_booking(booking)
-
-#             return PrepareResponse(
-#                 success=True,
-#                 message=cancellation_data['message'],
-#                 data={
-#                     "cancellation_fee": cancellation_data["cancellation_fee"],
-#                     "refundable_amount": cancellation_data["refundable_amount"],
-#                 }
-#             ).send(status.HTTP_200_OK)
-#         except Booking.DoesNotExist:
-#             return PrepareResponse(
-#                 success=False,
-#                 message="Booking not found.",
-#                 errors={"id": "Invalid booking ID."}
-#             ).send(status.HTTP_404_NOT_FOUND)
-#         except ValueError as e:
-#             return PrepareResponse(
-#                 success=False,
-#                 message=str(e),
-#             ).send(status.HTTP_400_BAD_REQUEST)
 class BookingCancellationView(APIView):
     permission_classes = [IsAuthenticated]
 
