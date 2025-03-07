@@ -187,6 +187,7 @@ class RoomType(models.Model):
     #deluxe_rooms
     ('deluxe_room_with_garden_view', 'Deluxe Room with Garden View'),
     ('deluxe_king_room', 'Deluxe King Room'),
+    ('deluxe_queen_room', 'Deluxe Queen Room'),
     ('deluxe_family_room', 'Deluxe Family Room'),
     ('super_deluxe_room_with_lake_view', 'Super Deluxe Room with Lake View'),
     ('super_deluxe_room_with_city_view', 'Super Deluxe Room with City View'),
@@ -234,12 +235,16 @@ class RoomType(models.Model):
     ('interconnected_room', 'Interconnected Room'),
     ('loft_room', 'Loft Room'),
     ('mezzanine_room', 'Mezzanine Room'),
+    ('double_or_twin_room', 'Double or Twin Room'),
+    ('deluxe_double_or_twin_room', 'Deluxe Double or Twin Room'),
+    ('deluxe_double_or_twin_room_with_garden', 'Deluxe Double or Twin Room with Garden'),
 
     # Other Options
     ('standard_room', 'Standard Room'),
     ('superior_room', 'Superior Room'),
     ('premium_room', 'Premium Room'),
     ('presidential_suite', 'Presidential Suite'),
+    ('queen_suite', 'Queen Suite'),
 
     # Custom Room Names
     ('camping_site', 'Camping Site'),
