@@ -185,6 +185,7 @@ class RoomType(models.Model):
     ('family_room_with_balcony', 'Family Room with Balcony'),
     ('deluxe_room_with_balcony', 'Deluxe Room with Balcony'),
     ('king_room_with_balcony', 'King Room with Balcony'),
+    ('deluxe_twin_room', 'Deluxe Twin Room'),
 
     #deluxe_rooms
     ('deluxe_room_with_garden_view', 'Deluxe Room with Garden View'),
@@ -219,6 +220,9 @@ class RoomType(models.Model):
     ('budget_double_room', 'Budget Double Room'),
     ('economy_family_room', 'Economy Family Room'),
     ('basic_dormitory_bed', 'Basic Dormitory Bed'),
+    ('superior_double_room', 'Superior Double Room'),
+    ('superior_twin_room', 'Superior Twin Room'),
+
 
     # Luxury Rooms
     ('luxury_penthouse_with_pool', 'Luxury Penthouse with Pool'),
@@ -237,6 +241,7 @@ class RoomType(models.Model):
     ('interconnected_room', 'Interconnected Room'),
     ('loft_room', 'Loft Room'),
     ('mezzanine_room', 'Mezzanine Room'),
+    ('deluxe_double_room', 'Deluxe Double Room'),
     ('double_or_twin_room', 'Double or Twin Room'),
     ('deluxe_double_or_twin_room_with_garden_view', 'Deluxe Double or Twin Room with Garden View'),
     ('deluxe_double_or_twin_room', 'Deluxe Double or Twin Room'),
