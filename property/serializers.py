@@ -46,7 +46,7 @@ class PropertySearchSerializer(serializers.ModelSerializer):
         model = Property
         fields = [
             'id', 'property_name', 'short_description', 'city_name', 'rooms',
-            'rating', 'review_count', 'images','slug','currency','free_cancellation','best_price','is_single_unit'
+            'rating', 'review_count', 'images','slug','free_cancellation','best_price','is_single_unit','currency'
         ]
 
         
@@ -66,13 +66,16 @@ class PropertySearchSerializer(serializers.ModelSerializer):
     def get_city_name(self, obj):
         return obj.city.city_name
     
+
     def get_currency(self, obj):
         if obj.is_single_unit:
             return obj.currency.currency_code if obj.currency else "N/A"
         first_room_price = obj.room_type.first().prices.first() if obj.room_type.exists() else None
         if first_room_price and first_room_price.currency:
             return first_room_price.currency.currency_code
+
         return obj.currency.currency_code if obj.currency else "N/A"
+        
 
     def get_is_single_unit(self, obj):
         if obj.is_single_unit:
