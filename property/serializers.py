@@ -39,12 +39,13 @@ class PropertySearchSerializer(serializers.ModelSerializer):
     images = PropertyImageSerializer(many=True, read_only=True)
     free_cancellation = serializers.SerializerMethodField()
     best_price = serializers.SerializerMethodField()
+    is_single_unit = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
         fields = [
             'id', 'property_name', 'short_description', 'city_name', 'rooms',
-            'rating', 'review_count', 'images','slug','free_cancellation','best_price'
+            'rating', 'review_count', 'images','slug','free_cancellation','best_price','is_single_unit'
         ]
 
         
@@ -63,6 +64,11 @@ class PropertySearchSerializer(serializers.ModelSerializer):
 
     def get_city_name(self, obj):
         return obj.city.city_name
+
+    def get_is_single_unit(self, obj):
+        if obj.is_single_unit:
+            return True
+        return False
 
     def get_rooms(self, obj):
         check_in = self.context.get('check_in', date.today())  
@@ -161,18 +167,24 @@ class PropertySerializer(serializers.ModelSerializer):
     rating = serializers.FloatField(source="avg_rating", read_only=True)
     review_count = serializers.IntegerField(read_only=True)
     images = PropertyImageSerializer(many=True, read_only=True)
+    is_single_unit = serializers.SerializerMethodField()
 
     class Meta:
         model = Property
         fields = [
             'id', 'category', 'property_name', 'short_description', 'city_name',
-            'rating', 'review_count', 'images', 'slug'
+            'rating', 'review_count', 'images', 'slug', 'is_single_unit'
         ]
 
     def get_short_description(self, obj):
         if obj.description:
             return obj.description.split('.', 1)[0].strip()
         return None
+
+    def get_is_single_unit(self, obj):
+        if obj.is_single_unit:
+            return True
+        return False
     
 class PropertyByCategorySerializer(serializers.ModelSerializer):
     properties = serializers.SerializerMethodField()
@@ -281,7 +293,7 @@ class PropertyDetailsSerializer(serializers.ModelSerializer):
                     "base_price_per_night": obj.single_unit_price.base_price_per_night,
                     "seasonal_price": obj.single_unit_price.seasonal_price,
                     "discount_percentage": obj.single_unit_price.discount_percentage,
-                    "currency": obj.single_unit_price.currency.code if obj.single_unit_price.currency else None,
+                    "currency": obj.currency.currency_code if obj.currency else "N/A",
                     "effective_price": obj.single_unit_price.get_effective_price()
                 }
             else:

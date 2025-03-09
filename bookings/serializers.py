@@ -244,13 +244,18 @@ class BookingCreateSerializer(serializers.ModelSerializer):
 class BookingListSerializer(serializers.ModelSerializer):
     property_name = serializers.CharField(source='property.property_name', read_only=True)
     room_name = serializers.CharField(source='room.room_name', read_only=True)
+    total_price = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Booking
         fields = [
-            'id', 'property_name', 'room_name', 'check_in', 'check_out', 'num_guests',
+            'id', 'property_name', 'room_name', 'check_in', 'check_out', 'num_guests','num_rooms',
             'first_name', 'last_name','country', 'customer_email', 'total_price', 'payment_status',
             'cancellation_status', 'booking_date'
         ]
         read_only_fields = fields
+
+    def get_total_price(self, obj):
+        return obj.total_price
 

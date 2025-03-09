@@ -171,6 +171,8 @@ class RoomType(models.Model):
     # Rooms with Views
     ('single_room_with_garden_view', 'Single Room with Garden View'),
     ('double_room_with_sea_view', 'Double Room with Sea View'),
+    ('twin_room_with_lake_view', 'Twin Room with Lake View'),
+    ('double_room_with_lake_view', 'Double Room with Lake View'),
     ('suite_with_mountain_view', 'Suite with Mountain View'),
     ('family_room_with_city_view', 'Family Room with City View'),
     ('deluxe_room_with_landmark_view', 'Deluxe Room with Landmark View'),
@@ -236,6 +238,7 @@ class RoomType(models.Model):
     ('loft_room', 'Loft Room'),
     ('mezzanine_room', 'Mezzanine Room'),
     ('double_or_twin_room', 'Double or Twin Room'),
+    ('deluxe_double_or_twin_room_with_garden_view', 'Deluxe Double or Twin Room with Garden View'),
     ('deluxe_double_or_twin_room', 'Deluxe Double or Twin Room'),
     ('deluxe_double_or_twin_room_with_garden', 'Deluxe Double or Twin Room with Garden'),
 

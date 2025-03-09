@@ -124,6 +124,7 @@ class BookingCreateAPIView(APIView):
         access_token = get_moredeals_token(request)
         response = requests.post(
             "https://moretrek.com/api/payments/payment-through-balance/",
+            # "http://192.168.1.72:8001/api/payments/payment-through-balance/",
             json={'amount': float(amount), 'pin': pin, 'platform': 'moreliving', 'currency_code': currency_code, 'recipient': recipient_username},
             headers={'Authorization': f"{access_token}"}
         )
