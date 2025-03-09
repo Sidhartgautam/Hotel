@@ -151,6 +151,7 @@ class PropertySearchView(APIView):
 
     def get(self, request):
         try:
+            # ✅ Get query parameters
             location = request.query_params.get('location', None)
             check_in = request.query_params.get('check_in', None)
             check_out = request.query_params.get('check_out', None)
@@ -167,7 +168,6 @@ class PropertySearchView(APIView):
             bed_type = request.query_params.get('bed_type', None)
             guest_rating = request.query_params.get('guest_rating', None)
 
-            # ✅ Validate location
             if not location:
                 return PrepareResponse(
                     success=False,
@@ -175,19 +175,22 @@ class PropertySearchView(APIView):
                     errors={"location": "This field is required."}
                 ).send(code=status.HTTP_400_BAD_REQUEST)
 
-            # ✅ Handle check-in & check-out
+            # ✅ Default to today's availability if no dates are provided
             today = date.today()
-            check_in = parse_date(check_in) if check_in else today
-            check_out = parse_date(check_out) if check_out else check_in + timedelta(days=1)
+            if not check_in or not check_out:
+                check_in = today
+                check_out = check_in + timedelta(days=1)
+            else:
+                check_in = parse_date(check_in)
+                check_out = parse_date(check_out)
+                if not check_in or not check_out or check_in >= check_out:
+                    return PrepareResponse(
+                        success=False,
+                        message="Check-out must be after check-in.",
+                        errors={"check_out": "Must be after check-in."}
+                    ).send(code=status.HTTP_400_BAD_REQUEST)
 
-            if not check_in or not check_out or check_in >= check_out:
-                return PrepareResponse(
-                    success=False,
-                    message="Check-out must be after check-in.",
-                    errors={"check_out": "Must be after check-in."}
-                ).send(code=status.HTTP_400_BAD_REQUEST)
-
-            # ✅ If check-in/check-out provided, filter by availability
+            # ✅ Subquery for available rooms
             available_rooms_subquery = RoomType.objects.filter(
                 property=OuterRef('id'),
                 max_no_of_guests__gte=max_guests,
@@ -197,33 +200,40 @@ class PropertySearchView(APIView):
                 total_available=Sum('availabilities__available_rooms')
             ).filter(total_available__gte=rooms_requested).values('id')[:1]
 
-            # ✅ Search properties based on location
+            # ✅ Search properties with filters
             properties = Property.objects.filter(
                 Q(city__city_name__icontains=location)
             ).select_related('city', 'country', 'currency', 'category')\
                 .prefetch_related('images', 'amenities', 'room_type')\
+                .defer('description', 'updated_at')\
                 .annotate(
+                    avg_rating=Avg('reviews__rating'),
+                    review_count=Count('reviews'),
+                    has_available_rooms=Exists(available_rooms_subquery),
                     is_single_unit_available=Case(
                         When(is_single_unit=True, then=Value(True)),
-                        default=Value(False)
+                        default=F('has_available_rooms')
                     )
-                )
+                ).filter(Q(is_single_unit_available=True) | Q(has_available_rooms=True))\
+                .distinct()  # ✅ Fix duplication
 
-            # ✅ If check-in & check-out are provided, apply availability filtering
-            if 'check_in' in request.query_params and 'check_out' in request.query_params:
-                properties = properties.annotate(
-                    has_available_rooms=Exists(available_rooms_subquery)
-                ).filter(Q(is_single_unit_available=True) | Q(has_available_rooms=True))
-            else:
-                properties = properties.filter(Q(is_single_unit_available=True) | Q(room_type__isnull=False))
+            # ✅ If only location is provided, show all properties
+            if not request.query_params.get('check_in') and not request.query_params.get('check_out'):
+                properties = Property.objects.filter(
+                    Q(city__city_name__icontains=location)
+                ).select_related('city', 'country', 'currency', 'category')\
+                    .prefetch_related('images', 'amenities', 'room_type')\
+                    .defer('description', 'updated_at')\
+                    .distinct()
 
-            # ✅ Apply additional filters
+            # ✅ Price filters
             if min_price is not None and max_price is not None:
                 properties = properties.filter(
                     Q(single_unit_price__base_price_per_night__range=(min_price, max_price)) |
                     Q(room_type__prices__base_price_per_night__range=(min_price, max_price))
                 ).distinct()
 
+            # ✅ Apply additional filters
             if star_rating:
                 properties = properties.filter(star_rating_property__gte=int(star_rating))
 
@@ -258,7 +268,6 @@ class PropertySearchView(APIView):
             })
 
             paginated_data = paginator.get_paginated_response(serializer.data)
-
             return PrepareResponse(
                 success=True,
                 message="Properties fetched successfully.",
@@ -272,11 +281,7 @@ class PropertySearchView(APIView):
             ).send(code=status.HTTP_200_OK)
 
         except Exception as e:
-            return PrepareResponse(
-                success=False,
-                message=f"Error - {str(e)}",
-                errors={"exception": str(e)}
-            ).send(code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return exception_response(e)
 
     
     
